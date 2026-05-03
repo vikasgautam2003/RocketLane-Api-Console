@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import Papa from 'papaparse'
 import { extractMapping } from '@/lib/claude'
 import { generateCurl } from '@/lib/generate-curl'
+import { loadApiDocs, RL_CATEGORIES } from '@/lib/rl-api-endpoints'
 import { executeRow } from '@/lib/executor'
 import { downloadCSV } from '@/lib/export'
 import { initDb, getSavedCurls, saveCurl, deleteSavedCurl, touchCurl, saveRun, getRuns, deleteRun } from '@/lib/db'
@@ -12,7 +13,7 @@ import MappingPreviewModal from './components/MappingPreviewModal'
 import LogPanel from './components/LogPanel'
 import SaveCurlModal from './components/SaveCurlModal'
 import HistoryView from './components/HistoryView'
-import SettingsModal from './components/SettingsModal'
+import SettingsView from './components/SettingsView'
 
 function parsePlaceholders(curl: string): string[] {
   return [...new Set([...curl.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]))]
@@ -34,15 +35,32 @@ function curlToName(curl: string): string {
   return curl.replace(/[\n\r]+/g, ' ').trim().slice(0, 60)
 }
 
+function parseCurlDirect(curl: string): MappingTemplate | null {
+  const flat = curl.replace(/\\\n/g, ' ').replace(/\s+/g, ' ').trim()
+  const methodMatch = flat.match(/-X\s+(\w+)/i)
+  const method = (methodMatch?.[1] ?? 'GET').toUpperCase()
+  const urlMatch = flat.match(/(https?:\/\/[^\s'"\\]+)/)
+  if (!urlMatch) return null
+  const url = urlMatch[1]
+  const headers: Record<string, string> = {}
+  for (const m of flat.matchAll(/-H\s+['"]([^'"]+)['"]/g)) {
+    const idx = m[1].indexOf(':')
+    if (idx > 0) headers[m[1].slice(0, idx).trim()] = m[1].slice(idx + 1).trim()
+  }
+  const placeholders = [...new Set([...curl.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]))]
+  const mapping: Record<string, string> = {}
+  for (const p of placeholders) mapping[p] = p === 'RL_API_KEY' ? 'session_rl_key' : p
+  return { method, url, headers, body: null, mapping }
+}
+
 export default function Home() {
   // Navigation
-  const [activeView, setActiveView] = useState<'operation' | 'history'>('operation')
+  const [activeView, setActiveView] = useState<'operation' | 'history' | 'settings'>('operation')
 
   // Session keys (never persisted)
   const [rlKey, setRlKey] = useState('')
   const [showRlKey, setShowRlKey] = useState(false)
   const [geminiKey, setGeminiKey] = useState('')
-  const [showSettings, setShowSettings] = useState(false)
 
   // Operation inputs
   const [curlCmd, setCurlCmd] = useState('')
@@ -54,6 +72,13 @@ export default function Home() {
   const [singleValues, setSingleValues] = useState<Record<string, string>>({})
 
   const placeholders = useMemo(() => parsePlaceholders(curlCmd), [curlCmd])
+
+  const detectedMethod = useMemo(() => {
+    const m = curlCmd.match(/-X\s+(\w+)/i)
+    if (m?.[1]) return m[1].toUpperCase()
+    if (/-d\s|--data/.test(curlCmd)) return 'POST'
+    return 'GET'
+  }, [curlCmd])
 
   useEffect(() => {
     setSingleValues((prev) => {
@@ -69,6 +94,9 @@ export default function Home() {
   const [csvRows, setCsvRows] = useState<Record<string, string>[]>([])
   const [csvColumns, setCsvColumns] = useState<string[]>([])
   const [csvError, setCsvError] = useState<string | null>(null)
+
+  // API docs (from Settings)
+  const [apiDocs, setApiDocs] = useState<Record<string, string>>({})
 
   // Curl generation state
   const [showGenerate, setShowGenerate] = useState(false)
@@ -103,6 +131,7 @@ export default function Home() {
     })
     const stored = localStorage.getItem('gemini_api_key')
     if (stored) setGeminiKey(stored)
+    setApiDocs(loadApiDocs())
   }, [])
 
   async function refreshSavedCurls() {
@@ -155,6 +184,11 @@ export default function Home() {
     setActiveView('operation')
   }
 
+  function handleSwitchToOperation() {
+    setApiDocs(loadApiDocs())
+    setActiveView('operation')
+  }
+
   const canPreview =
     rlKey.trim().length > 0 &&
     geminiKey.trim().length > 0 &&
@@ -162,12 +196,14 @@ export default function Home() {
     placeholders.length > 0 &&
     (mode === 'single' || (mode === 'bulk' && csvRows.length > 0))
 
+  const isGetMethod = detectedMethod === 'GET'
+
   const canRun =
-    template !== null &&
-    !dryRun &&
     !isRunning &&
     rlKey.trim().length > 0 &&
-    (mode === 'single' || csvRows.length > 0)
+    curlCmd.trim().length > 0 &&
+    (isGetMethod || mode === 'single' || csvRows.length > 0) &&
+    (isGetMethod || template !== null)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -202,12 +238,15 @@ export default function Home() {
     setIsGenerating(true)
     setGenerateError(null)
     try {
+      const storedDocs = loadApiDocs()
+      const apiDocsText = Object.values(storedDocs).filter(Boolean).join('\n\n---\n\n') || undefined
       const curl = await generateCurl(
         generateDesc,
         context,
         geminiKey,
         mode === 'bulk' ? csvColumns : undefined,
         mode === 'bulk' ? csvRows.slice(0, 2) : undefined,
+        apiDocsText,
       )
       setCurlCmd(curl)
       setTemplate(null)
@@ -237,8 +276,9 @@ export default function Home() {
   }
 
   // Shared bulk execution loop — used by both initial run and retry
-  async function runRows(rows: Array<{ originalRow: number; data: Record<string, string> }>) {
-    if (!template) return
+  async function runRows(rows: Array<{ originalRow: number; data: Record<string, string> }>, tpl?: MappingTemplate) {
+    const activeTpl = tpl ?? template ?? parseCurlDirect(curlCmd)
+    if (!activeTpl) return
     setLogs([])
     setIsRunning(true)
     setSummary(null)
@@ -262,12 +302,14 @@ export default function Home() {
         break
       }
       setProgress({ current: i + 1, total: rows.length })
-      const entry = await executeRow(template, rows[i].data, rlKey, dryRun, rows[i].originalRow)
-      setLogs((prev) => [...prev, entry])
-      if (entry.status === 'success') s.success++
-      else if (entry.status === 'dry_run') s.dryRun++
-      else if (entry.status === 'error') s.failed++
-      else s.skipped++
+      const entries = await executeRow(activeTpl, rows[i].data, rlKey, dryRun, rows[i].originalRow)
+      setLogs((prev) => [...prev, ...entries])
+      for (const entry of entries) {
+        if (entry.status === 'success') s.success++
+        else if (entry.status === 'dry_run') s.dryRun++
+        else if (entry.status === 'error') s.failed++
+        else s.skipped++
+      }
       if (i < rows.length - 1 && delayMs > 0 && !abortRef.current) {
         await new Promise<void>((resolve) => setTimeout(resolve, delayMs))
       }
@@ -294,19 +336,22 @@ export default function Home() {
   }
 
   async function handleRun() {
-    if (!template) return
+    const tpl = template ?? parseCurlDirect(curlCmd)
+    if (!tpl) return
     setShowPreview(false)
 
     if (mode === 'single') {
       setIsRunning(true)
       setSummary(null)
-      const entry = await executeRow(template, singleValues, rlKey, dryRun, 1)
-      setLogs((prev) => [...prev, entry])
+      const entries = await executeRow(tpl, singleValues, rlKey, dryRun, 1)
+      setLogs((prev) => [...prev, ...entries])
       const s: RunSummary = { success: 0, failed: 0, skipped: 0, dryRun: 0 }
-      if (entry.status === 'success') s.success++
-      else if (entry.status === 'dry_run') s.dryRun++
-      else if (entry.status === 'error') s.failed++
-      else s.skipped++
+      for (const entry of entries) {
+        if (entry.status === 'success') s.success++
+        else if (entry.status === 'dry_run') s.dryRun++
+        else if (entry.status === 'error') s.failed++
+        else s.skipped++
+      }
       setSummary(s)
       setIsRunning(false)
       saveRun({
@@ -323,8 +368,23 @@ export default function Home() {
         is_dry_run: dryRun ? 1 : 0,
         created_at: new Date().toISOString(),
       }).then(refreshHistory)
+    } else if (csvRows.length > 0) {
+      await runRows(csvRows.map((data, i) => ({ originalRow: i + 1, data })), tpl)
     } else {
-      await runRows(csvRows.map((data, i) => ({ originalRow: i + 1, data })))
+      // GET in bulk mode with no CSV — just run once
+      setIsRunning(true)
+      setSummary(null)
+      const entries = await executeRow(tpl, {}, rlKey, dryRun, 1)
+      setLogs((prev) => [...prev, ...entries])
+      const s: RunSummary = { success: 0, failed: 0, skipped: 0, dryRun: 0 }
+      for (const entry of entries) {
+        if (entry.status === 'success') s.success++
+        else if (entry.status === 'dry_run') s.dryRun++
+        else if (entry.status === 'error') s.failed++
+        else s.skipped++
+      }
+      setSummary(s)
+      setIsRunning(false)
     }
   }
 
@@ -358,10 +418,10 @@ export default function Home() {
         <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0 shadow-[0_0_8px_rgba(167,139,250,0.6)]" />
         <span className="text-sm font-semibold text-zinc-100 tracking-tight">Rocketlane API Console</span>
         <nav className="flex gap-0.5 ml-1">
-          {(['operation', 'history'] as const).map((view) => (
+          {(['operation', 'history', 'settings'] as const).map((view) => (
             <button
               key={view}
-              onClick={() => setActiveView(view)}
+              onClick={() => view === 'operation' ? handleSwitchToOperation() : setActiveView(view)}
               className={`px-3 py-1.5 text-xs rounded-lg transition-all ${
                 activeView === view
                   ? 'bg-violet-500/15 text-violet-200 font-medium border border-violet-500/20'
@@ -372,23 +432,16 @@ export default function Home() {
             </button>
           ))}
         </nav>
-        <div className="ml-auto flex items-center gap-3">
-          {runs.length > 0 && activeView === 'operation' && (
-            <span className="text-[11px] text-zinc-700 tabular-nums">{runs.length} runs</span>
-          )}
-          <button
-            onClick={() => setShowSettings(true)}
-            className="w-7 h-7 flex items-center justify-center rounded-lg text-zinc-600 hover:text-violet-300 hover:bg-violet-500/[0.08] transition-all"
-            title="Settings"
-          >
-            ⚙
-          </button>
-        </div>
+        {runs.length > 0 && activeView === 'operation' && (
+          <span className="ml-auto text-[11px] text-zinc-700 tabular-nums">{runs.length} runs</span>
+        )}
       </header>
 
       {/* Main */}
       <div className="flex flex-1 min-h-0">
-        {activeView === 'history' ? (
+        {activeView === 'settings' ? (
+          <SettingsView geminiKey={geminiKey} onSave={handleSaveSettings} />
+        ) : activeView === 'history' ? (
           <HistoryView runs={runs} onLoad={handleLoadFromHistory} onDelete={handleDeleteRun} />
         ) : (
           <>
@@ -415,7 +468,7 @@ export default function Home() {
                     <p className="mt-2 text-xs text-zinc-600">
                       Gemini key not set —{' '}
                       <button
-                        onClick={() => setShowSettings(true)}
+                        onClick={() => setActiveView('settings')}
                         className="text-violet-400/80 hover:text-violet-300 transition-colors"
                       >
                         open Settings ↗
@@ -476,11 +529,22 @@ export default function Home() {
                 {/* Curl command */}
                 <section>
                   <div className="flex items-center justify-between mb-2.5">
-                    <label className="label mb-0">
+                    <label className="label mb-0 flex items-center gap-2">
                       Curl Command
-                      <span className="text-zinc-600 normal-case font-normal tracking-normal ml-1">
+                      <span className="text-zinc-600 normal-case font-normal tracking-normal">
                         — use {'{{PLACEHOLDER}}'}
                       </span>
+                      {curlCmd.trim() && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border normal-case tracking-normal ${
+                          detectedMethod === 'GET'    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          detectedMethod === 'POST'   ? 'bg-violet-500/10  text-violet-400  border-violet-500/20' :
+                          detectedMethod === 'PUT'    ? 'bg-amber-500/10   text-amber-400   border-amber-500/20'  :
+                          detectedMethod === 'DELETE' ? 'bg-rose-500/10    text-rose-400    border-rose-500/20'   :
+                          'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
+                        }`}>
+                          {detectedMethod}
+                        </span>
+                      )}
                     </label>
                     <button
                       onClick={() => { setShowGenerate((v) => !v); setGenerateError(null) }}
@@ -491,8 +555,11 @@ export default function Home() {
                     </button>
                   </div>
 
-                  {showGenerate && (
-                    <div className="mb-3 space-y-2">
+                  <div
+                    className="overflow-hidden transition-all duration-200 ease-out"
+                    style={{ maxHeight: showGenerate ? '160px' : '0px', opacity: showGenerate ? 1 : 0, marginBottom: showGenerate ? '12px' : '0px' }}
+                  >
+                    <div className="space-y-2 pt-0.5">
                       <div className="flex gap-2">
                         <input
                           type="text"
@@ -502,7 +569,6 @@ export default function Home() {
                           placeholder="e.g. create a task with start date, due date and effort"
                           className="input flex-1 text-sm"
                           disabled={isGenerating}
-                          autoFocus
                         />
                         <button
                           onClick={handleGenerateCurl}
@@ -513,13 +579,13 @@ export default function Home() {
                         </button>
                       </div>
                       {generateError && (
-                        <p className="text-xs text-red-400 font-mono break-all">{generateError}</p>
+                        <p className="text-xs text-rose-400 font-mono break-all">{generateError}</p>
                       )}
                       <p className="text-[11px] text-zinc-600">
-                        Paste endpoint docs in Context below for best results.
+                        API docs from Settings are included automatically.
                       </p>
                     </div>
-                  )}
+                  </div>
 
                   <textarea
                     value={curlCmd}
@@ -541,12 +607,36 @@ export default function Home() {
 
                 {/* Context */}
                 <section>
-                  <label className="label">Context</label>
+                  <div className="flex items-center justify-between mb-2.5">
+                    <label className="label mb-0">Context</label>
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        const doc = apiDocs[e.target.value]
+                        if (doc) setContext(doc)
+                      }}
+                      className="text-[10px] bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1 text-zinc-400 hover:text-zinc-200 hover:border-violet-500/30 transition-all cursor-pointer focus:outline-none focus:border-violet-500/40"
+                    >
+                      <option value="" disabled>Load endpoint docs…</option>
+                      {RL_CATEGORIES.map((cat) => (
+                        <optgroup key={cat.name} label={cat.name}>
+                          {cat.endpoints.map((ep) => {
+                            const hasDocs = !!apiDocs[ep.key]?.trim()
+                            return (
+                              <option key={ep.key} value={ep.key} disabled={!hasDocs}>
+                                {hasDocs ? '● ' : '○ '}[{ep.method}] {ep.name}
+                              </option>
+                            )
+                          })}
+                        </optgroup>
+                      ))}
+                    </select>
+                  </div>
                   <textarea
                     value={context}
                     onChange={(e) => setContext(e.target.value)}
                     rows={3}
-                    placeholder="Paste endpoint docs, field schema, or OpenAPI spec..."
+                    placeholder="Paste endpoint docs, or pick one from Settings above…"
                     className="input resize-none w-full text-sm leading-relaxed"
                   />
                 </section>
@@ -726,13 +816,23 @@ export default function Home() {
                   >
                     {isLoadingMapping ? '⟳ Loading…' : 'Preview Mapping'}
                   </button>
-                  <button
-                    onClick={handleRun}
-                    disabled={!canRun}
-                    className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 transition-all disabled:opacity-25 disabled:cursor-not-allowed shadow-lg shadow-black/20"
-                  >
-                    Run
-                  </button>
+                  {dryRun ? (
+                    <button
+                      onClick={handleRun}
+                      disabled={isRunning || !rlKey.trim() || !curlCmd.trim()}
+                      className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all disabled:opacity-25 disabled:cursor-not-allowed shadow-lg shadow-indigo-950/40"
+                    >
+                      {isRunning ? '⟳ Running…' : 'Dry Run'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleRun}
+                      disabled={!canRun}
+                      className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 transition-all disabled:opacity-25 disabled:cursor-not-allowed shadow-lg shadow-black/20"
+                    >
+                      {isRunning ? '⟳ Running…' : 'Run'}
+                    </button>
+                  )}
                 </div>
 
               </div>
@@ -775,13 +875,6 @@ export default function Home() {
           defaultName={loadedCurlName}
           onSave={handleSaveCurl}
           onClose={() => setShowSaveCurlModal(false)}
-        />
-      )}
-      {showSettings && (
-        <SettingsModal
-          geminiKey={geminiKey}
-          onSave={handleSaveSettings}
-          onClose={() => setShowSettings(false)}
         />
       )}
     </div>
