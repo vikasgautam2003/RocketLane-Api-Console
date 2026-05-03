@@ -107,6 +107,12 @@ export async function saveRun(run: Omit<RunRecord, 'id'>): Promise<void> {
   )
 }
 
+export async function deleteRun(id: number): Promise<void> {
+  const db = await getDb()
+  if (!db) return
+  await db.execute('DELETE FROM runs WHERE id = ?', [id])
+}
+
 export async function getRuns(limit = 100): Promise<RunRecord[]> {
   const db = await getDb()
   if (!db) return []

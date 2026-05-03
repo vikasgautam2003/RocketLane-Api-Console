@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #09090b;
-  --foreground: #fafafa;
+  --background: #09080f;
+  --foreground: #ede9fe;
 }
 
 @theme inline {
@@ -16,24 +16,28 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 @layer utilities {
   .input {
-    @apply bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-zinc-100
-      placeholder-zinc-600 focus:outline-none focus:border-zinc-500 transition-colors;
+    @apply bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-violet-50
+      placeholder-zinc-600 focus:outline-none focus:border-violet-500/40 focus:bg-violet-500/[0.04]
+      transition-all duration-150;
   }
 
   .btn-ghost {
-    @apply bg-zinc-900 border border-zinc-700 rounded text-zinc-500
-      hover:text-zinc-300 hover:border-zinc-600 transition-colors;
+    @apply bg-white/[0.04] border border-white/[0.08] rounded-lg text-zinc-400 text-sm
+      hover:bg-violet-500/[0.08] hover:text-violet-200 hover:border-violet-500/25
+      transition-all duration-150 cursor-pointer;
   }
 
   .label {
-    @apply block text-xs text-zinc-500 uppercase tracking-wider mb-2 font-medium;
+    @apply block text-[10px] text-zinc-500 uppercase tracking-[0.12em] mb-2.5 font-semibold;
   }
 
   .divider {
-    @apply border-t border-zinc-800;
+    @apply border-t border-white/[0.05];
   }
 }

@@ -24,9 +24,16 @@ const ICON: Record<LogEntry['status'], string> = {
 
 const COLOR: Record<LogEntry['status'], string> = {
   success: 'text-emerald-400',
-  error: 'text-red-400',
+  error: 'text-rose-400',
   skipped: 'text-amber-400',
-  dry_run: 'text-sky-400',
+  dry_run: 'text-violet-400',
+}
+
+const ROW_BG: Record<LogEntry['status'], string> = {
+  success: 'hover:bg-emerald-500/[0.04]',
+  error: 'hover:bg-rose-500/[0.05]',
+  skipped: 'hover:bg-amber-500/[0.04]',
+  dry_run: 'hover:bg-violet-500/[0.05]',
 }
 
 export default function LogPanel({
@@ -49,19 +56,19 @@ export default function LogPanel({
   const hasActions = !isRunning && (onRetry || onExportErrors || onExportAll)
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#09080f]">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800 shrink-0">
-        <div className="flex items-center gap-2.5">
-          <span className="text-xs text-zinc-500 font-medium uppercase tracking-wider">Output</span>
+      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.05] shrink-0">
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] text-zinc-500 font-semibold uppercase tracking-[0.12em]">Output</span>
           {isRunning && progress && (
-            <span className="text-xs text-zinc-500 tabular-nums">
+            <span className="text-xs text-zinc-500 tabular-nums font-mono">
               {progress.current} / {progress.total}
             </span>
           )}
           {isRunning && !progress && (
-            <span className="flex items-center gap-1 text-xs text-blue-400">
-              <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+            <span className="flex items-center gap-1.5 text-xs text-violet-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse" />
               running
             </span>
           )}
@@ -70,7 +77,7 @@ export default function LogPanel({
           {isRunning && progress && (
             <button
               onClick={onAbort}
-              className="text-xs text-red-400 hover:text-red-300 border border-red-500/30 hover:border-red-400/50 px-2 py-0.5 rounded transition-colors"
+              className="text-xs text-rose-400 hover:text-rose-300 border border-rose-500/20 hover:border-rose-400/40 px-2.5 py-1 rounded-md transition-all"
             >
               Abort
             </button>
@@ -78,7 +85,7 @@ export default function LogPanel({
           {!isRunning && logs.length > 0 && (
             <button
               onClick={onClear}
-              className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"
+              className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors"
             >
               clear
             </button>
@@ -88,32 +95,37 @@ export default function LogPanel({
 
       {/* Progress bar */}
       {progress && (
-        <div className="shrink-0">
-          <div className="h-0.5 bg-zinc-800">
-            <div
-              className="h-0.5 bg-blue-500 transition-all duration-200"
-              style={{ width: `${(progress.current / progress.total) * 100}%` }}
-            />
-          </div>
+        <div className="shrink-0 h-[2px] bg-white/[0.04]">
+          <div
+            className="h-full bg-violet-500/70 transition-all duration-200"
+            style={{ width: `${(progress.current / progress.total) * 100}%` }}
+          />
         </div>
       )}
 
       {/* Log entries */}
-      <div className="flex-1 overflow-y-auto p-4 font-mono text-xs">
+      <div className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[11px] leading-relaxed">
         {logs.length === 0 ? (
-          <p className="text-zinc-700 italic">
-            No output yet. Preview mapping and run an operation to see results.
+          <p className="text-zinc-700 italic text-xs mt-2">
+            No output yet — preview mapping and confirm to begin.
           </p>
         ) : (
-          <div className="space-y-1">
+          <div className="space-y-px">
             {logs.map((entry) => (
-              <div key={entry.id} className="flex gap-2 leading-relaxed">
-                <span className={`shrink-0 ${COLOR[entry.status]}`}>{ICON[entry.status]}</span>
-                <span className="text-zinc-600 shrink-0">[{entry.row}]</span>
+              <div
+                key={entry.id}
+                className={`flex gap-2.5 px-1 py-0.5 rounded transition-colors ${ROW_BG[entry.status]}`}
+              >
+                <span className={`shrink-0 w-3 text-center ${COLOR[entry.status]}`}>
+                  {ICON[entry.status]}
+                </span>
+                <span className="text-zinc-600 shrink-0 tabular-nums">[{entry.row}]</span>
                 {entry.statusCode && (
-                  <span className="text-zinc-600 shrink-0">{entry.statusCode}</span>
+                  <span className={`shrink-0 tabular-nums font-semibold ${COLOR[entry.status]}`}>
+                    {entry.statusCode}
+                  </span>
                 )}
-                <span className={`${COLOR[entry.status]} whitespace-pre-wrap break-all`}>
+                <span className={`${COLOR[entry.status]} opacity-80 whitespace-pre-wrap break-all`}>
                   {entry.message}
                 </span>
               </div>
@@ -125,30 +137,28 @@ export default function LogPanel({
 
       {/* Summary + actions */}
       {summary && (
-        <div className="border-t border-zinc-800 px-4 py-3 shrink-0 space-y-2.5">
-          {/* Counts */}
-          <div className="flex gap-4 text-xs font-mono">
+        <div className="border-t border-white/[0.05] px-5 py-3.5 shrink-0 space-y-3">
+          <div className="flex gap-4 text-[11px] font-mono">
             {summary.success > 0 && (
               <span className="text-emerald-400">{summary.success} succeeded</span>
             )}
             {summary.dryRun > 0 && (
-              <span className="text-sky-400">{summary.dryRun} dry-run</span>
+              <span className="text-violet-400">{summary.dryRun} dry-run</span>
             )}
             {summary.failed > 0 && (
-              <span className="text-red-400">{summary.failed} failed</span>
+              <span className="text-rose-400">{summary.failed} failed</span>
             )}
             {summary.skipped > 0 && (
               <span className="text-amber-400">{summary.skipped} skipped</span>
             )}
           </div>
 
-          {/* Action buttons */}
           {hasActions && (
             <div className="flex gap-2 flex-wrap">
               {onRetry && summary.failed > 0 && (
                 <button
                   onClick={onRetry}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-400 hover:border-violet-500/30 hover:text-violet-300 transition-all"
                 >
                   ↺ Retry failed ({summary.failed})
                 </button>
@@ -156,7 +166,7 @@ export default function LogPanel({
               {onExportErrors && summary.failed > 0 && (
                 <button
                   onClick={onExportErrors}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-400 hover:border-violet-500/30 hover:text-violet-300 transition-all"
                 >
                   ↓ Export errors
                 </button>
@@ -164,7 +174,7 @@ export default function LogPanel({
               {onExportAll && logs.length > 0 && (
                 <button
                   onClick={onExportAll}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded border border-zinc-700 text-zinc-400 hover:border-zinc-500 hover:text-zinc-200 transition-colors"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-400 hover:border-violet-500/30 hover:text-violet-300 transition-all"
                 >
                   ↓ Export all
                 </button>
