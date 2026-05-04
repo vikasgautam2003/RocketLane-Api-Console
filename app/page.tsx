@@ -740,12 +740,12 @@ export default function Home() {
                   </div>
                 </section>
 
-                {/* Single mode: field values */}
-                {!isGetMethod && mode === 'single' && placeholders.length > 0 && (
+                {/* Single mode: field values — shown for any method with user-fillable placeholders */}
+                {mode === 'single' && placeholders.filter(p => p !== 'RL_API_KEY').length > 0 && (
                   <section>
                     <p className="label">Field Values</p>
                     <div className="space-y-2">
-                      {placeholders.map((p) => (
+                      {placeholders.filter(p => p !== 'RL_API_KEY').map((p) => (
                         <div key={p} className="flex items-center gap-3">
                           <code className="text-violet-300 text-[11px] font-mono w-32 shrink-0 truncate bg-violet-500/[0.07] px-2 py-1 rounded-md">
                             {`{{${p}}}`}
