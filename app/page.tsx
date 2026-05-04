@@ -15,6 +15,7 @@ import SaveCurlModal from './components/SaveCurlModal'
 import HistoryView from './components/HistoryView'
 import SettingsView from './components/SettingsView'
 import EndpointPicker from './components/EndpointPicker'
+import SplashScreen from './components/SplashScreen'
 
 function parsePlaceholders(curl: string): string[] {
   return [...new Set([...curl.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]))]
@@ -68,6 +69,9 @@ function parseCurlDirect(curl: string): MappingTemplate | null {
 }
 
 export default function Home() {
+  // Splash
+  const [showSplash, setShowSplash] = useState(true)
+
   // Navigation
   const [activeView, setActiveView] = useState<'operation' | 'history' | 'settings'>('operation')
 
@@ -463,6 +467,8 @@ export default function Home() {
   const previewRow = mode === 'bulk' ? (csvRows[0] ?? {}) : singleValues
 
   return (
+    <>
+    {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
     <div className="flex flex-col h-screen bg-[#09080f] text-zinc-100 overflow-hidden">
       {/* Header */}
       <header className="flex items-center gap-4 px-5 py-2.5 border-b border-white/[0.05] shrink-0">
@@ -963,5 +969,6 @@ export default function Home() {
         />
       )}
     </div>
+    </>
   )
 }

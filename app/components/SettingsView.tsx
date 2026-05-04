@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { RL_CATEGORIES, loadApiDocs, saveApiDocs } from '@/lib/rl-api-endpoints'
 import type { HttpMethod } from '@/lib/rl-api-endpoints'
 
@@ -23,12 +23,12 @@ export default function SettingsView({ claudeKey, onSave }: Props) {
   const [selectedCategory, setSelectedCategory] = useState(RL_CATEGORIES[0].name)
   const [expandedEndpoints, setExpandedEndpoints] = useState<Set<string>>(new Set())
   const [docs, setDocs] = useState<Record<string, string>>({})
+  const [importMsg, setImportMsg] = useState<string | null>(null)
+  const importRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { setDraft(claudeKey) }, [claudeKey])
 
-  useEffect(() => {
-    setDocs(loadApiDocs())
-  }, [])
+  useEffect(() => { setDocs(loadApiDocs()) }, [])
 
   const handleSaveKey = useCallback(() => {
     onSave(draft.trim())
@@ -50,6 +50,39 @@ export default function SettingsView({ claudeKey, onSave }: Props) {
     saveApiDocs(next)
   }
 
+  function handleExport() {
+    const payload = { claudeKey, docs }
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = 'rl-console-settings.json'
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      try {
+        const payload = JSON.parse(ev.target?.result as string)
+        if (payload.claudeKey) onSave(payload.claudeKey)
+        if (payload.docs && typeof payload.docs === 'object') {
+          saveApiDocs(payload.docs)
+          setDocs(payload.docs)
+        }
+        setImportMsg('Settings restored ✓')
+        setTimeout(() => setImportMsg(null), 2500)
+      } catch {
+        setImportMsg('Invalid file')
+        setTimeout(() => setImportMsg(null), 2500)
+      }
+    }
+    reader.readAsText(file)
+    e.target.value = ''
+  }
+
   const changed = draft.trim() !== claudeKey
 
   const filledCount = (categoryName: string) => {
@@ -65,7 +98,7 @@ export default function SettingsView({ claudeKey, onSave }: Props) {
 
       {/* Claude key — compact top bar */}
       <div className="px-6 py-4 border-b border-white/[0.05] shrink-0">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-wrap">
           <div className="flex-1 max-w-sm">
             <p className="text-[10px] text-zinc-500 uppercase tracking-[0.12em] font-semibold mb-2">Claude API Key</p>
             <div className="flex gap-2">
@@ -89,10 +122,31 @@ export default function SettingsView({ claudeKey, onSave }: Props) {
               </button>
             </div>
           </div>
-          {saved && <span className="text-xs text-emerald-400 mt-4">Saved ✓</span>}
-          {claudeKey && !changed && (
-            <span className="text-xs text-zinc-600 mt-4">Key is set</span>
-          )}
+
+          {/* Backup / restore */}
+          <div className="flex items-center gap-2 ml-auto">
+            {(saved || importMsg) && (
+              <span className="text-xs text-emerald-400">{importMsg ?? 'Saved ✓'}</span>
+            )}
+            {claudeKey && !changed && !saved && !importMsg && (
+              <span className="text-xs text-zinc-600">Key is set</span>
+            )}
+            <input ref={importRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+            <button
+              onClick={() => importRef.current?.click()}
+              className="btn-ghost text-xs px-3 py-1.5"
+              title="Restore settings from a previously exported file"
+            >
+              ↑ Import
+            </button>
+            <button
+              onClick={handleExport}
+              className="btn-ghost text-xs px-3 py-1.5"
+              title="Export Claude key + all API docs to a JSON file"
+            >
+              ↓ Export
+            </button>
+          </div>
         </div>
       </div>
 
