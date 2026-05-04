@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Rocketlane API Console",
+  title: "RL Console",
   description: "Run Rocketlane API operations via curl + CSV",
 };
 

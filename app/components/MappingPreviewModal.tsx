@@ -45,8 +45,8 @@ export default function MappingPreviewModal({
   ].filter((v, i, a) => a.indexOf(v) === i)
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-[#100e1c] border border-violet-500/[0.12] rounded-2xl w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl shadow-violet-950/40">
+    <div className="animate-backdrop fixed inset-0 bg-black/85 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="animate-modal bg-[#100e1c] border border-violet-500/[0.12] rounded-2xl w-full max-w-2xl max-h-[88vh] flex flex-col shadow-2xl shadow-violet-950/40">
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-white/[0.06] shrink-0">

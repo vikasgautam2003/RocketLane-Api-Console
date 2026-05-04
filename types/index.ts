@@ -13,6 +13,7 @@ export interface LogEntry {
   statusCode?: number
   message: string
   timestamp: string
+  items?: unknown[]  // raw API items for GET list results — used for CSV export
 }
 
 export interface RunSummary {

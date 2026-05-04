@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import Papa from 'papaparse'
 import { extractMapping } from '@/lib/claude'
 import { generateCurl } from '@/lib/generate-curl'
-import { loadApiDocs, RL_CATEGORIES } from '@/lib/rl-api-endpoints'
+import { loadApiDocs } from '@/lib/rl-api-endpoints'
 import { executeRow } from '@/lib/executor'
 import { downloadCSV } from '@/lib/export'
 import { initDb, getSavedCurls, saveCurl, deleteSavedCurl, touchCurl, saveRun, getRuns, deleteRun } from '@/lib/db'
@@ -14,6 +14,7 @@ import LogPanel from './components/LogPanel'
 import SaveCurlModal from './components/SaveCurlModal'
 import HistoryView from './components/HistoryView'
 import SettingsView from './components/SettingsView'
+import EndpointPicker from './components/EndpointPicker'
 
 function parsePlaceholders(curl: string): string[] {
   return [...new Set([...curl.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]))]
@@ -38,10 +39,23 @@ function curlToName(curl: string): string {
 function parseCurlDirect(curl: string): MappingTemplate | null {
   const flat = curl.replace(/\\\n/g, ' ').replace(/\s+/g, ' ').trim()
   const methodMatch = flat.match(/-X\s+(\w+)/i)
-  const method = (methodMatch?.[1] ?? 'GET').toUpperCase()
+  const hasGetFlag = /-G\b|--get\b/.test(flat)
+  let method = (methodMatch?.[1] ?? 'GET').toUpperCase()
+  if (hasGetFlag) method = 'GET'
   const urlMatch = flat.match(/(https?:\/\/[^\s'"\\]+)/)
   if (!urlMatch) return null
-  const url = urlMatch[1]
+  let url = urlMatch[1]
+  // For -G style, --data-urlencode params become URL query params
+  if (hasGetFlag) {
+    try {
+      const urlObj = new URL(url)
+      for (const m of flat.matchAll(/--data-urlencode\s+['"]([^'"]+)['"]/g)) {
+        const eqIdx = m[1].indexOf('=')
+        if (eqIdx > 0) urlObj.searchParams.set(m[1].slice(0, eqIdx), m[1].slice(eqIdx + 1))
+      }
+      url = urlObj.toString()
+    } catch { /* keep original url */ }
+  }
   const headers: Record<string, string> = {}
   for (const m of flat.matchAll(/-H\s+['"]([^'"]+)['"]/g)) {
     const idx = m[1].indexOf(':')
@@ -60,7 +74,7 @@ export default function Home() {
   // Session keys (never persisted)
   const [rlKey, setRlKey] = useState('')
   const [showRlKey, setShowRlKey] = useState(false)
-  const [geminiKey, setGeminiKey] = useState('')
+  const [claudeKey, setClaudeKey] = useState('')
 
   // Operation inputs
   const [curlCmd, setCurlCmd] = useState('')
@@ -76,7 +90,8 @@ export default function Home() {
   const detectedMethod = useMemo(() => {
     const m = curlCmd.match(/-X\s+(\w+)/i)
     if (m?.[1]) return m[1].toUpperCase()
-    if (/-d\s|--data/.test(curlCmd)) return 'POST'
+    if (/-G\b|--get\b/.test(curlCmd)) return 'GET'
+    if (/-d\s|--data(?!-urlencode)/.test(curlCmd)) return 'POST'
     return 'GET'
   }, [curlCmd])
 
@@ -97,6 +112,7 @@ export default function Home() {
 
   // API docs (from Settings)
   const [apiDocs, setApiDocs] = useState<Record<string, string>>({})
+  const [pickedMethod, setPickedMethod] = useState<string | null>(null)
 
   // Curl generation state
   const [showGenerate, setShowGenerate] = useState(false)
@@ -115,7 +131,18 @@ export default function Home() {
   const [isRunning, setIsRunning] = useState(false)
   const [summary, setSummary] = useState<RunSummary | null>(null)
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
+  const [fetchProgress, setFetchProgress] = useState<{ pages: number; items: number; total: number | null } | null>(null)
   const abortRef = useRef(false)
+
+  // Toast
+  const [toast, setToast] = useState<string | null>(null)
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  function showToast(msg: string) {
+    if (toastTimer.current) clearTimeout(toastTimer.current)
+    setToast(msg)
+    toastTimer.current = setTimeout(() => setToast(null), 2500)
+  }
 
   // Persistence state
   const [savedCurls, setSavedCurls] = useState<SavedCurl[]>([])
@@ -129,8 +156,8 @@ export default function Home() {
       getSavedCurls().then(setSavedCurls)
       getRuns().then(setRuns)
     })
-    const stored = localStorage.getItem('gemini_api_key')
-    if (stored) setGeminiKey(stored)
+    const stored = localStorage.getItem('claude_api_key')
+    if (stored) setClaudeKey(stored)
     setApiDocs(loadApiDocs())
   }, [])
 
@@ -191,12 +218,13 @@ export default function Home() {
 
   const canPreview =
     rlKey.trim().length > 0 &&
-    geminiKey.trim().length > 0 &&
+    claudeKey.trim().length > 0 &&
     curlCmd.trim().length > 0 &&
     placeholders.length > 0 &&
     (mode === 'single' || (mode === 'bulk' && csvRows.length > 0))
 
-  const isGetMethod = detectedMethod === 'GET'
+  const effectiveMethod = pickedMethod ?? detectedMethod
+  const isGetMethod = effectiveMethod === 'GET'
 
   const canRun =
     !isRunning &&
@@ -228,22 +256,26 @@ export default function Home() {
     e.target.value = ''
   }
 
-  function handleSaveSettings(newGeminiKey: string) {
-    setGeminiKey(newGeminiKey)
-    localStorage.setItem('gemini_api_key', newGeminiKey)
+  function handleSaveSettings(newClaudeKey: string) {
+    setClaudeKey(newClaudeKey)
+    localStorage.setItem('claude_api_key', newClaudeKey)
   }
 
   async function handleGenerateCurl() {
-    if (!generateDesc.trim() || !geminiKey.trim()) return
+    if (!generateDesc.trim() || !claudeKey.trim()) return
     setIsGenerating(true)
     setGenerateError(null)
     try {
+      // Only inject all stored docs when the user hasn't already picked a specific endpoint doc.
+      // Dumping everything when context is filled causes Claude to pick the wrong endpoint.
       const storedDocs = loadApiDocs()
-      const apiDocsText = Object.values(storedDocs).filter(Boolean).join('\n\n---\n\n') || undefined
+      const apiDocsText = context.trim()
+        ? undefined
+        : (Object.values(storedDocs).filter(Boolean).join('\n\n---\n\n') || undefined)
       const curl = await generateCurl(
         generateDesc,
         context,
-        geminiKey,
+        claudeKey,
         mode === 'bulk' ? csvColumns : undefined,
         mode === 'bulk' ? csvRows.slice(0, 2) : undefined,
         apiDocsText,
@@ -265,7 +297,7 @@ export default function Home() {
     setMappingError(null)
     try {
       const sampleData = mode === 'bulk' ? csvRows.slice(0, 3) : [singleValues]
-      const t = await extractMapping(curlCmd, context, expectedOutcome, sampleData, geminiKey)
+      const t = await extractMapping(curlCmd, context, expectedOutcome, sampleData, claudeKey)
       setTemplate(t)
       setShowPreview(true)
     } catch (e) {
@@ -339,12 +371,32 @@ export default function Home() {
     const tpl = template ?? parseCurlDirect(curlCmd)
     if (!tpl) return
     setShowPreview(false)
+    setLogs([])
+    setSummary(null)
 
-    if (mode === 'single') {
+    // GET requests always run once — never iterate CSV rows
+    if (isGetMethod) {
       setIsRunning(true)
-      setSummary(null)
+      setFetchProgress(null)
+      abortRef.current = false
+      const entries = await executeRow(tpl, singleValues, rlKey, dryRun, 1, (pages, items, total) => {
+        setFetchProgress({ pages, items, total })
+      }, abortRef)
+      setFetchProgress(null)
+      setLogs(entries)
+      const s: RunSummary = { success: 0, failed: 0, skipped: 0, dryRun: 0 }
+      for (const entry of entries) {
+        if (entry.status === 'success') s.success++
+        else if (entry.status === 'dry_run') s.dryRun++
+        else if (entry.status === 'error') s.failed++
+        else s.skipped++
+      }
+      setSummary(s)
+      setIsRunning(false)
+    } else if (mode === 'single') {
+      setIsRunning(true)
       const entries = await executeRow(tpl, singleValues, rlKey, dryRun, 1)
-      setLogs((prev) => [...prev, ...entries])
+      setLogs(entries)
       const s: RunSummary = { success: 0, failed: 0, skipped: 0, dryRun: 0 }
       for (const entry of entries) {
         if (entry.status === 'success') s.success++
@@ -370,21 +422,6 @@ export default function Home() {
       }).then(refreshHistory)
     } else if (csvRows.length > 0) {
       await runRows(csvRows.map((data, i) => ({ originalRow: i + 1, data })), tpl)
-    } else {
-      // GET in bulk mode with no CSV — just run once
-      setIsRunning(true)
-      setSummary(null)
-      const entries = await executeRow(tpl, {}, rlKey, dryRun, 1)
-      setLogs((prev) => [...prev, ...entries])
-      const s: RunSummary = { success: 0, failed: 0, skipped: 0, dryRun: 0 }
-      for (const entry of entries) {
-        if (entry.status === 'success') s.success++
-        else if (entry.status === 'dry_run') s.dryRun++
-        else if (entry.status === 'error') s.failed++
-        else s.skipped++
-      }
-      setSummary(s)
-      setIsRunning(false)
     }
   }
 
@@ -400,14 +437,28 @@ export default function Home() {
   }
 
   function handleExportErrors() {
-    downloadCSV(`rl-errors-${Date.now()}.csv`, logs.filter((e) => e.status === 'error').map(logToRow))
+    const rows = logs.filter((e) => e.status === 'error').map(logToRow)
+    downloadCSV(`rl-errors-${Date.now()}.csv`, rows)
+    showToast(`Downloaded ${rows.length} error rows`)
   }
 
   function handleExportAll() {
     downloadCSV(`rl-run-${Date.now()}.csv`, logs.map(logToRow))
+    showToast(`Downloaded run log (${logs.length} rows)`)
+  }
+
+  function handleExportItems() {
+    const allItems = logs.flatMap((e) => e.items ?? [])
+    if (allItems.length === 0) return
+    const flat = allItems.map((item) =>
+      typeof item === 'object' && item !== null ? (item as Record<string, unknown>) : { value: item }
+    )
+    downloadCSV(`rl-items-${Date.now()}.csv`, flat)
+    showToast(`Downloaded ${flat.length} items as CSV`)
   }
 
   const canRetry = !isRunning && mode === 'bulk' && template !== null && (summary?.failed ?? 0) > 0
+  const hasGetItems = !isRunning && logs.some((e) => (e.items?.length ?? 0) > 0)
   const loadedCurl = savedCurls.find((c) => c.name === loadedCurlName)
   const previewRow = mode === 'bulk' ? (csvRows[0] ?? {}) : singleValues
 
@@ -415,8 +466,8 @@ export default function Home() {
     <div className="flex flex-col h-screen bg-[#09080f] text-zinc-100 overflow-hidden">
       {/* Header */}
       <header className="flex items-center gap-4 px-5 py-2.5 border-b border-white/[0.05] shrink-0">
-        <span className="w-2 h-2 rounded-full bg-violet-400 shrink-0 shadow-[0_0_8px_rgba(167,139,250,0.6)]" />
-        <span className="text-sm font-semibold text-zinc-100 tracking-tight">Rocketlane API Console</span>
+        <img src="/rli.svg" alt="RL" className="w-6 h-6 rounded-lg shrink-0 object-cover" />
+        <span className="text-sm font-semibold text-zinc-100 tracking-tight">RL Console</span>
         <nav className="flex gap-0.5 ml-1">
           {(['operation', 'history', 'settings'] as const).map((view) => (
             <button
@@ -440,7 +491,7 @@ export default function Home() {
       {/* Main */}
       <div className="flex flex-1 min-h-0">
         {activeView === 'settings' ? (
-          <SettingsView geminiKey={geminiKey} onSave={handleSaveSettings} />
+          <SettingsView claudeKey={claudeKey} onSave={handleSaveSettings} />
         ) : activeView === 'history' ? (
           <HistoryView runs={runs} onLoad={handleLoadFromHistory} onDelete={handleDeleteRun} />
         ) : (
@@ -464,9 +515,9 @@ export default function Home() {
                       {showRlKey ? 'hide' : 'show'}
                     </button>
                   </div>
-                  {!geminiKey && (
+                  {!claudeKey && (
                     <p className="mt-2 text-xs text-zinc-600">
-                      Gemini key not set —{' '}
+                      Claude key not set —{' '}
                       <button
                         onClick={() => setActiveView('settings')}
                         className="text-violet-400/80 hover:text-violet-300 transition-colors"
@@ -534,15 +585,15 @@ export default function Home() {
                       <span className="text-zinc-600 normal-case font-normal tracking-normal">
                         — use {'{{PLACEHOLDER}}'}
                       </span>
-                      {curlCmd.trim() && (
+                      {(curlCmd.trim() || pickedMethod) && (
                         <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border normal-case tracking-normal ${
-                          detectedMethod === 'GET'    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                          detectedMethod === 'POST'   ? 'bg-violet-500/10  text-violet-400  border-violet-500/20' :
-                          detectedMethod === 'PUT'    ? 'bg-amber-500/10   text-amber-400   border-amber-500/20'  :
-                          detectedMethod === 'DELETE' ? 'bg-rose-500/10    text-rose-400    border-rose-500/20'   :
+                          effectiveMethod === 'GET'    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                          effectiveMethod === 'POST'   ? 'bg-violet-500/10  text-violet-400  border-violet-500/20' :
+                          effectiveMethod === 'PUT'    ? 'bg-amber-500/10   text-amber-400   border-amber-500/20'  :
+                          effectiveMethod === 'DELETE' ? 'bg-rose-500/10    text-rose-400    border-rose-500/20'   :
                           'bg-zinc-500/10 text-zinc-400 border-zinc-500/20'
                         }`}>
-                          {detectedMethod}
+                          {effectiveMethod}
                         </span>
                       )}
                     </label>
@@ -561,21 +612,37 @@ export default function Home() {
                   >
                     <div className="space-y-2 pt-0.5">
                       <div className="flex gap-2">
-                        <input
-                          type="text"
-                          value={generateDesc}
-                          onChange={(e) => setGenerateDesc(e.target.value)}
-                          onKeyDown={(e) => e.key === 'Enter' && handleGenerateCurl()}
-                          placeholder="e.g. create a task with start date, due date and effort"
-                          className="input flex-1 text-sm"
-                          disabled={isGenerating}
-                        />
+                        <div className="relative flex-1">
+                          <input
+                            type="text"
+                            value={generateDesc}
+                            onChange={(e) => setGenerateDesc(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleGenerateCurl()}
+                            placeholder="e.g. create a task with start date, due date and effort"
+                            className="input w-full text-sm pr-6"
+                            disabled={isGenerating}
+                          />
+                          {generateDesc && (
+                            <button
+                              onClick={() => setGenerateDesc('')}
+                              className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-600 hover:text-zinc-300 transition-colors text-base leading-none"
+                              tabIndex={-1}
+                            >
+                              ×
+                            </button>
+                          )}
+                        </div>
                         <button
                           onClick={handleGenerateCurl}
-                          disabled={!generateDesc.trim() || !geminiKey.trim() || isGenerating}
-                          className="btn-ghost text-xs px-3 disabled:opacity-40 min-w-[64px]"
+                          disabled={!generateDesc.trim() || !claudeKey.trim() || isGenerating}
+                          className="btn-ghost text-xs px-3 disabled:opacity-40 min-w-[64px] flex items-center justify-center gap-1.5"
                         >
-                          {isGenerating ? '⟳' : 'Generate'}
+                          {isGenerating ? (
+                            <>
+                              <span className="animate-spin-sm w-3 h-3 rounded-full border-2 border-zinc-600 border-t-zinc-300 inline-block shrink-0" />
+                              <span>Generating</span>
+                            </>
+                          ) : 'Generate'}
                         </button>
                       </div>
                       {generateError && (
@@ -589,48 +656,37 @@ export default function Home() {
 
                   <textarea
                     value={curlCmd}
-                    onChange={(e) => setCurlCmd(e.target.value)}
+                    onChange={(e) => { setCurlCmd(e.target.value); setPickedMethod(null) }}
                     rows={5}
                     placeholder={`curl -X DELETE https://api.rocketlane.com/api/1.0/tasks/{{TaskId}} \\\n  -H "api-key: {{RL_API_KEY}}"`}
                     className="input font-mono resize-none w-full text-[12px] leading-relaxed"
                   />
-                  {placeholders.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {placeholders.map((p) => (
-                        <code key={p} className="text-[10px] bg-violet-500/10 border border-violet-500/20 text-violet-300 px-2 py-0.5 rounded-md font-mono">
-                          {`{{${p}}}`}
-                        </code>
-                      ))}
-                    </div>
-                  )}
+                  <div className="mt-1.5 flex items-start justify-between gap-2">
+                    {placeholders.length > 0 ? (
+                      <div className="flex flex-wrap gap-1">
+                        {placeholders.map((p) => (
+                          <code key={p} className="text-[10px] bg-violet-500/10 border border-violet-500/20 text-violet-300 px-2 py-0.5 rounded-md font-mono">
+                            {`{{${p}}}`}
+                          </code>
+                        ))}
+                      </div>
+                    ) : <span />}
+                    {curlCmd.trim() && (
+                      <button
+                        onClick={() => { setCurlCmd(''); setPickedMethod(null); setTemplate(null) }}
+                        className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors shrink-0"
+                      >
+                        clear
+                      </button>
+                    )}
+                  </div>
                 </section>
 
                 {/* Context */}
                 <section>
                   <div className="flex items-center justify-between mb-2.5">
                     <label className="label mb-0">Context</label>
-                    <select
-                      value=""
-                      onChange={(e) => {
-                        const doc = apiDocs[e.target.value]
-                        if (doc) setContext(doc)
-                      }}
-                      className="text-[10px] bg-white/[0.04] border border-white/[0.08] rounded-md px-2 py-1 text-zinc-400 hover:text-zinc-200 hover:border-violet-500/30 transition-all cursor-pointer focus:outline-none focus:border-violet-500/40"
-                    >
-                      <option value="" disabled>Load endpoint docs…</option>
-                      {RL_CATEGORIES.map((cat) => (
-                        <optgroup key={cat.name} label={cat.name}>
-                          {cat.endpoints.map((ep) => {
-                            const hasDocs = !!apiDocs[ep.key]?.trim()
-                            return (
-                              <option key={ep.key} value={ep.key} disabled={!hasDocs}>
-                                {hasDocs ? '● ' : '○ '}[{ep.method}] {ep.name}
-                              </option>
-                            )
-                          })}
-                        </optgroup>
-                      ))}
-                    </select>
+                    <EndpointPicker docs={apiDocs} onSelect={(doc, method) => { setContext(doc); setPickedMethod(method) }} />
                   </div>
                   <textarea
                     value={context}
@@ -655,8 +711,13 @@ export default function Home() {
 
                 {/* Mode toggle */}
                 <section>
-                  <p className="label">Mode</p>
-                  <div className="flex rounded-lg border border-white/[0.08] p-0.5 bg-white/[0.02]">
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="label mb-0">Mode</p>
+                    {isGetMethod && (
+                      <span className="text-[10px] text-zinc-600">not applicable for GET</span>
+                    )}
+                  </div>
+                  <div className={`flex rounded-lg border border-white/[0.08] p-0.5 bg-white/[0.02] transition-opacity ${isGetMethod ? 'opacity-30 pointer-events-none' : ''}`}>
                     {(['single', 'bulk'] as const).map((m) => (
                       <button
                         key={m}
@@ -674,7 +735,7 @@ export default function Home() {
                 </section>
 
                 {/* Single mode: field values */}
-                {mode === 'single' && placeholders.length > 0 && (
+                {!isGetMethod && mode === 'single' && placeholders.length > 0 && (
                   <section>
                     <p className="label">Field Values</p>
                     <div className="space-y-2">
@@ -699,7 +760,7 @@ export default function Home() {
                 )}
 
                 {/* Bulk mode: CSV upload */}
-                {mode === 'bulk' && (
+                {!isGetMethod && mode === 'bulk' && (
                   <section>
                     <p className="label">CSV File</p>
                     <input
@@ -814,7 +875,12 @@ export default function Home() {
                     disabled={!canPreview || isLoadingMapping || isRunning}
                     className="flex-1 py-2.5 text-sm font-medium rounded-lg border border-white/[0.1] text-zinc-400 hover:text-zinc-200 hover:border-white/[0.18] hover:bg-white/[0.03] transition-all disabled:opacity-30 disabled:cursor-not-allowed"
                   >
-                    {isLoadingMapping ? '⟳ Loading…' : 'Preview Mapping'}
+                    {isLoadingMapping ? (
+                      <span className="flex items-center justify-center gap-2">
+                        <span className="animate-spin-sm w-3.5 h-3.5 rounded-full border-2 border-zinc-600 border-t-zinc-300 inline-block" />
+                        Generating…
+                      </span>
+                    ) : 'Preview Mapping'}
                   </button>
                   {dryRun ? (
                     <button
@@ -822,7 +888,12 @@ export default function Home() {
                       disabled={isRunning || !rlKey.trim() || !curlCmd.trim()}
                       className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-all disabled:opacity-25 disabled:cursor-not-allowed shadow-lg shadow-indigo-950/40"
                     >
-                      {isRunning ? '⟳ Running…' : 'Dry Run'}
+                      {isRunning ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="animate-spin-sm w-3.5 h-3.5 rounded-full border-2 border-indigo-300/40 border-t-white inline-block" />
+                          Running…
+                        </span>
+                      ) : 'Dry Run'}
                     </button>
                   ) : (
                     <button
@@ -830,7 +901,12 @@ export default function Home() {
                       disabled={!canRun}
                       className="flex-1 py-2.5 text-sm font-semibold rounded-lg bg-zinc-100 hover:bg-white text-zinc-900 transition-all disabled:opacity-25 disabled:cursor-not-allowed shadow-lg shadow-black/20"
                     >
-                      {isRunning ? '⟳ Running…' : 'Run'}
+                      {isRunning ? (
+                        <span className="flex items-center justify-center gap-2">
+                          <span className="animate-spin-sm w-3.5 h-3.5 rounded-full border-2 border-zinc-400/40 border-t-zinc-900 inline-block" />
+                          Running…
+                        </span>
+                      ) : 'Run'}
                     </button>
                   )}
                 </div>
@@ -845,16 +921,25 @@ export default function Home() {
                 isRunning={isRunning}
                 summary={summary}
                 progress={progress}
+                fetchProgress={fetchProgress}
                 onClear={() => { setLogs([]); setSummary(null) }}
                 onAbort={() => { abortRef.current = true }}
                 onRetry={canRetry ? handleRetryFailed : undefined}
                 onExportErrors={!isRunning && logs.some((l) => l.status === 'error') ? handleExportErrors : undefined}
                 onExportAll={!isRunning && logs.length > 0 ? handleExportAll : undefined}
+                onExportItems={hasGetItems ? handleExportItems : undefined}
               />
             </div>
           </>
         )}
       </div>
+
+      {/* Toast */}
+      {toast && (
+        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl bg-zinc-800 border border-white/[0.10] text-zinc-100 text-xs font-medium shadow-2xl shadow-black/40 pointer-events-none animate-modal">
+          ✓ {toast}
+        </div>
+      )}
 
       {/* Modals */}
       {showPreview && template && (

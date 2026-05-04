@@ -5,7 +5,7 @@ import { RL_CATEGORIES, loadApiDocs, saveApiDocs } from '@/lib/rl-api-endpoints'
 import type { HttpMethod } from '@/lib/rl-api-endpoints'
 
 interface Props {
-  geminiKey: string
+  claudeKey: string
   onSave: (key: string) => void
 }
 
@@ -16,15 +16,15 @@ const METHOD_STYLE: Record<HttpMethod, string> = {
   DELETE: 'bg-rose-500/10    text-rose-400    border-rose-500/20',
 }
 
-export default function SettingsView({ geminiKey, onSave }: Props) {
-  const [draft, setDraft] = useState(geminiKey)
+export default function SettingsView({ claudeKey, onSave }: Props) {
+  const [draft, setDraft] = useState(claudeKey)
   const [showKey, setShowKey] = useState(false)
   const [saved, setSaved] = useState(false)
   const [selectedCategory, setSelectedCategory] = useState(RL_CATEGORIES[0].name)
   const [expandedEndpoints, setExpandedEndpoints] = useState<Set<string>>(new Set())
   const [docs, setDocs] = useState<Record<string, string>>({})
 
-  useEffect(() => { setDraft(geminiKey) }, [geminiKey])
+  useEffect(() => { setDraft(claudeKey) }, [claudeKey])
 
   useEffect(() => {
     setDocs(loadApiDocs())
@@ -50,7 +50,7 @@ export default function SettingsView({ geminiKey, onSave }: Props) {
     saveApiDocs(next)
   }
 
-  const changed = draft.trim() !== geminiKey
+  const changed = draft.trim() !== claudeKey
 
   const filledCount = (categoryName: string) => {
     const cat = RL_CATEGORIES.find((c) => c.name === categoryName)
@@ -63,18 +63,18 @@ export default function SettingsView({ geminiKey, onSave }: Props) {
   return (
     <div className="flex-1 flex flex-col bg-[#09080f] overflow-hidden">
 
-      {/* Gemini key — compact top bar */}
+      {/* Claude key — compact top bar */}
       <div className="px-6 py-4 border-b border-white/[0.05] shrink-0">
         <div className="flex items-center gap-4">
           <div className="flex-1 max-w-sm">
-            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.12em] font-semibold mb-2">Gemini API Key</p>
+            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.12em] font-semibold mb-2">Claude API Key</p>
             <div className="flex gap-2">
               <input
                 type={showKey ? 'text' : 'password'}
                 value={draft}
                 onChange={(e) => { setDraft(e.target.value); setSaved(false) }}
                 onKeyDown={(e) => e.key === 'Enter' && changed && handleSaveKey()}
-                placeholder="AIza..."
+                placeholder="sk-ant-..."
                 className="input flex-1 text-sm"
               />
               <button onClick={() => setShowKey((v) => !v)} className="btn-ghost text-xs px-3">
@@ -90,7 +90,7 @@ export default function SettingsView({ geminiKey, onSave }: Props) {
             </div>
           </div>
           {saved && <span className="text-xs text-emerald-400 mt-4">Saved ✓</span>}
-          {geminiKey && !changed && (
+          {claudeKey && !changed && (
             <span className="text-xs text-zinc-600 mt-4">Key is set</span>
           )}
         </div>

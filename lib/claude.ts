@@ -1,8 +1,9 @@
-import { GoogleGenAI } from '@google/genai'
+import { invoke } from '@tauri-apps/api/core'
 import { z } from 'zod'
 import type { MappingTemplate } from '@/types'
 
-const MODEL = 'gemini-3-flash-preview'
+const MODEL = 'claude-haiku-4-5-20251001'
+const API_URL = 'https://api.anthropic.com/v1/messages'
 
 const SYSTEM = `You are an API call template builder. Return ONLY a valid JSON object — no markdown fences, no explanation.
 
@@ -37,7 +38,7 @@ export async function extractMapping(
   context: string,
   expectedOutcome: string,
   sampleData: Record<string, string>[],
-  geminiKey: string,
+  claudeKey: string,
 ): Promise<MappingTemplate> {
   const userContent = [
     `Curl command:\n${curlCommand}`,
@@ -46,26 +47,39 @@ export async function extractMapping(
     `Sample data:\n${JSON.stringify(sampleData, null, 2)}`,
   ].join('\n\n')
 
-  const ai = new GoogleGenAI({ apiKey: geminiKey })
-
-  const res = await ai.models.generateContent({
-    model: MODEL,
-    contents: userContent,
-    config: {
-      systemInstruction: SYSTEM,
-      responseMimeType: 'application/json',
-      thinkingConfig: { thinkingBudget: 0 },
+  const responseText = await invoke<string>('native_http_post', {
+    url: API_URL,
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': claudeKey,
+      'anthropic-version': '2023-06-01',
     },
+    body: JSON.stringify({
+      model: MODEL,
+      max_tokens: 1024,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: userContent }],
+    }),
   })
 
-  const raw = res.text
-  if (!raw) throw new Error('Empty response from Gemini')
+  const data = JSON.parse(responseText) as {
+    content?: { type: string; text: string }[]
+    error?: { message: string }
+  }
+  if (data.error) throw new Error(data.error.message)
+
+  const raw = data.content?.[0]?.type === 'text' ? data.content[0].text.trim() : ''
+  if (!raw) throw new Error('Empty response from Claude')
+
+  const jsonStr = raw.startsWith('```')
+    ? (raw.match(/```(?:json)?\s*([\s\S]+?)```/)?.[1]?.trim() ?? raw)
+    : raw
 
   let parsed: unknown
   try {
-    parsed = JSON.parse(raw)
+    parsed = JSON.parse(jsonStr)
   } catch {
-    throw new Error(`Gemini returned non-JSON:\n${raw.slice(0, 300)}`)
+    throw new Error(`Claude returned non-JSON:\n${raw.slice(0, 300)}`)
   }
 
   const result = MappingSchema.safeParse(parsed)

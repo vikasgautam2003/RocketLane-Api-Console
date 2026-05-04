@@ -8,11 +8,13 @@ interface Props {
   isRunning: boolean
   summary: RunSummary | null
   progress: { current: number; total: number } | null
+  fetchProgress?: { pages: number; items: number; total: number | null } | null
   onClear: () => void
   onAbort: () => void
   onRetry?: () => void
   onExportErrors?: () => void
   onExportAll?: () => void
+  onExportItems?: () => void
 }
 
 const ICON: Record<LogEntry['status'], string> = {
@@ -41,11 +43,13 @@ export default function LogPanel({
   isRunning,
   summary,
   progress,
+  fetchProgress,
   onClear,
   onAbort,
   onRetry,
   onExportErrors,
   onExportAll,
+  onExportItems,
 }: Props) {
   const bottomRef = useRef<HTMLDivElement>(null)
 
@@ -53,7 +57,7 @@ export default function LogPanel({
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [logs])
 
-  const hasActions = !isRunning && (onRetry || onExportErrors || onExportAll)
+  const hasActions = !isRunning && (onRetry || onExportErrors || onExportAll || onExportItems)
 
   return (
     <div className="flex flex-col h-full bg-[#09080f]">
@@ -105,11 +109,23 @@ export default function LogPanel({
 
       {/* Log entries */}
       <div className="flex-1 overflow-y-auto px-5 py-4 font-mono text-[11px] leading-relaxed">
-        {logs.length === 0 ? (
+        {fetchProgress && (
+          <div className="flex items-center gap-2.5 px-1 py-1 mb-2 rounded bg-violet-500/[0.06] border border-violet-500/[0.12]">
+            <span className="w-1.5 h-1.5 rounded-full bg-violet-400 animate-pulse shrink-0" />
+            <span className="text-violet-300">
+              Fetching page {fetchProgress.pages}
+              {fetchProgress.total != null
+                ? ` · ${fetchProgress.items} / ${fetchProgress.total} items`
+                : ` · ${fetchProgress.items} items so far`}
+              …
+            </span>
+          </div>
+        )}
+        {logs.length === 0 && !fetchProgress ? (
           <p className="text-zinc-700 italic text-xs mt-2">
             No output yet — preview mapping and confirm to begin.
           </p>
-        ) : (
+        ) : logs.length > 0 ? (
           <div className="space-y-px">
             {logs.map((entry) => (
               <div
@@ -132,7 +148,7 @@ export default function LogPanel({
             ))}
             <div ref={bottomRef} />
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* Summary + actions */}
@@ -166,17 +182,27 @@ export default function LogPanel({
               {onExportErrors && summary.failed > 0 && (
                 <button
                   onClick={onExportErrors}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-400 hover:border-violet-500/30 hover:text-violet-300 transition-all"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-400 hover:border-rose-500/30 hover:text-rose-300 transition-all"
                 >
-                  ↓ Export errors
+                  ↓ Errors CSV
                 </button>
               )}
               {onExportAll && logs.length > 0 && (
                 <button
                   onClick={onExportAll}
-                  className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-400 hover:border-violet-500/30 hover:text-violet-300 transition-all"
+                  className="text-xs px-3 py-1.5 rounded-lg border border-white/[0.08] text-zinc-400 hover:border-zinc-500/40 hover:text-zinc-200 transition-all"
+                  title="Export the run log (status, row, message) as CSV"
                 >
-                  ↓ Export all
+                  ↓ Run log CSV
+                </button>
+              )}
+              {onExportItems && (
+                <button
+                  onClick={onExportItems}
+                  className="text-xs px-3 py-1.5 rounded-lg border border-emerald-500/25 text-emerald-400 hover:border-emerald-400/50 hover:bg-emerald-500/[0.06] transition-all font-medium"
+                  title="Export the raw API items as CSV (all fields)"
+                >
+                  ↓ Items CSV
                 </button>
               )}
             </div>

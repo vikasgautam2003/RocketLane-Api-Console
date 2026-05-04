@@ -136,6 +136,8 @@ export async function executeRow(
   rlKey: string,
   dryRun: boolean,
   rowIndex: number,
+  onPageFetched?: (pages: number, itemsSoFar: number, total: number | null) => void,
+  abortRef?: { current: boolean },
 ): Promise<LogEntry[]> {
   const id = `${rowIndex}-${Date.now()}`
   const timestamp = new Date().toISOString()
@@ -165,9 +167,12 @@ export async function executeRow(
         } catch { return url }
       })()
       let pages = 0
-      const MAX_PAGES = 50
+      let totalRecordCount: number | null = null
+      const MAX_PAGES = 200
 
+      let aborted = false
       while (currentUrl && pages < MAX_PAGES) {
+        if (abortRef?.current) { aborted = true; break }
         const res = await httpFetch(currentUrl, { method: 'GET', headers })
         const text = await res.text().catch(() => '')
         if (res.status < 200 || res.status >= 300) {
@@ -179,7 +184,10 @@ export async function executeRow(
           if (Array.isArray(json.data)) {
             allItems.push(...json.data)
             const pg = json.pagination ?? {}
-            const nextToken = pg.nextPageToken ?? pg.pageToken ?? null
+            if (pg.totalRecordCount != null) totalRecordCount = pg.totalRecordCount
+            onPageFetched?.(pages, allItems.length, totalRecordCount)
+            const hasMore = pg.hasMore !== false
+            const nextToken = hasMore ? (pg.nextPageToken ?? null) : null
             if (nextToken) {
               const u = new URL(currentUrl)
               u.searchParams.set('pageToken', nextToken)
@@ -190,13 +198,29 @@ export async function executeRow(
             return one({ id, row: rowIndex, status: 'success', statusCode: res.status, message: `${res.status} — ${summarizeBody(text)}`, timestamp })
           }
         } catch {
-          return one({ id, row: rowIndex, status: 'success', statusCode: res.status, message: `${res.status} — text.slice(0, 160)}`, timestamp })
+          return one({ id, row: rowIndex, status: 'success', statusCode: res.status, message: `${res.status} — ${text.slice(0, 160)}`, timestamp })
         }
         break
       }
 
       if (allItems.length === 0) {
-        return one({ id, row: rowIndex, status: 'success', statusCode: 200, message: `200 — 0 items returned`, timestamp })
+        return one({ id, row: rowIndex, status: aborted ? 'skipped' : 'success', statusCode: 200, message: aborted ? 'ABORTED — 0 items fetched' : '200 — no items returned', timestamp })
+      }
+
+      const totalNote = totalRecordCount != null ? ` of ${totalRecordCount} total` : ''
+      const abortNote = aborted ? '  ·  stopped early' : ''
+      const sample = summarizeItem(allItems[0])
+
+      const EXPAND_LIMIT = 200
+      if (allItems.length > EXPAND_LIMIT) {
+        return one({
+          id, row: rowIndex,
+          status: aborted ? 'skipped' : 'success',
+          statusCode: 200,
+          message: `${aborted ? 'ABORTED' : '200'} — ${allItems.length}${totalNote} items${abortNote}  ·  e.g. ${sample}`,
+          timestamp,
+          items: allItems,
+        })
       }
 
       // One log entry per item
