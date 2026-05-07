@@ -136,7 +136,9 @@ export default function Home() {
   const [summary, setSummary] = useState<RunSummary | null>(null)
   const [progress, setProgress] = useState<{ current: number; total: number } | null>(null)
   const [fetchProgress, setFetchProgress] = useState<{ pages: number; items: number; total: number | null } | null>(null)
+  const [eta, setEta] = useState<{ remainingMs: number; doneAt: Date } | null>(null)
   const abortRef = useRef(false)
+  const runStartRef = useRef<number | null>(null)
 
   // Toast
   const [toast, setToast] = useState<string | null>(null)
@@ -318,7 +320,9 @@ export default function Home() {
     setLogs([])
     setIsRunning(true)
     setSummary(null)
+    setEta(null)
     abortRef.current = false
+    runStartRef.current = Date.now()
 
     const s: RunSummary = { success: 0, failed: 0, skipped: 0, dryRun: 0 }
 
@@ -346,14 +350,26 @@ export default function Home() {
         else if (entry.status === 'error') s.failed++
         else s.skipped++
       }
+      const completed = i + 1
+      const remaining = rows.length - completed
+      if (remaining > 0 && runStartRef.current !== null) {
+        const elapsed = Date.now() - runStartRef.current
+        const avgMs = elapsed / completed
+        const remainingMs = remaining * avgMs
+        setEta({ remainingMs, doneAt: new Date(Date.now() + remainingMs) })
+      } else {
+        setEta(null)
+      }
       if (i < rows.length - 1 && delayMs > 0 && !abortRef.current) {
         await new Promise<void>((resolve) => setTimeout(resolve, delayMs))
       }
     }
 
+    setEta(null)
     setProgress(null)
     setSummary(s)
     setIsRunning(false)
+    runStartRef.current = null
 
     saveRun({
       curl_name: loadedCurlName || curlToName(curlCmd),
@@ -928,6 +944,7 @@ export default function Home() {
                 summary={summary}
                 progress={progress}
                 fetchProgress={fetchProgress}
+                eta={eta}
                 onClear={() => { setLogs([]); setSummary(null) }}
                 onAbort={() => { abortRef.current = true }}
                 onRetry={canRetry ? handleRetryFailed : undefined}

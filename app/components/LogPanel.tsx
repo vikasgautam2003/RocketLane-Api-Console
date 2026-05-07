@@ -9,12 +9,25 @@ interface Props {
   summary: RunSummary | null
   progress: { current: number; total: number } | null
   fetchProgress?: { pages: number; items: number; total: number | null } | null
+  eta?: { remainingMs: number; doneAt: Date } | null
   onClear: () => void
   onAbort: () => void
   onRetry?: () => void
   onExportErrors?: () => void
   onExportAll?: () => void
   onExportItems?: () => void
+}
+
+function fmtMs(ms: number): string {
+  const s = Math.round(ms / 1000)
+  if (s < 60) return `~${s}s`
+  const m = Math.floor(s / 60)
+  const rem = s % 60
+  return rem > 0 ? `~${m}m ${rem}s` : `~${m}m`
+}
+
+function fmtTime(date: Date): string {
+  return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
 }
 
 const ICON: Record<LogEntry['status'], string> = {
@@ -44,6 +57,7 @@ export default function LogPanel({
   summary,
   progress,
   fetchProgress,
+  eta,
   onClear,
   onAbort,
   onRetry,
@@ -96,6 +110,21 @@ export default function LogPanel({
           )}
         </div>
       </div>
+
+      {/* ETA strip */}
+      {isRunning && eta && progress && (
+        <div className="shrink-0 px-5 py-1.5 bg-white/[0.015] border-b border-white/[0.04] flex items-center gap-3 font-mono text-[11px]">
+          <span className="text-zinc-500">
+            <span className="text-zinc-300 tabular-nums">{progress.current}</span> done
+            {' · '}
+            <span className="text-zinc-400 tabular-nums">{progress.total - progress.current}</span> remaining
+          </span>
+          <span className="text-zinc-600">·</span>
+          <span className="text-violet-400">{fmtMs(eta.remainingMs)} left</span>
+          <span className="text-zinc-600">·</span>
+          <span className="text-zinc-500">done ~<span className="text-zinc-300">{fmtTime(eta.doneAt)}</span></span>
+        </div>
+      )}
 
       {/* Progress bar */}
       {progress && (

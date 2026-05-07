@@ -1,0 +1,1138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RL Console — Project Guide</title>
+<style>
+  @page {
+    size: A4;
+    margin: 18mm 16mm 18mm 16mm;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", sans-serif;
+    color: #1c1b22;
+    line-height: 1.55;
+    font-size: 10.8pt;
+  }
+  .cover {
+    page-break-after: always;
+    height: 95vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding-left: 8mm;
+    border-left: 3px solid #7c3aed;
+  }
+  .cover .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.18em;
+    font-size: 9pt;
+    color: #7c3aed;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+  .cover h1 {
+    font-size: 38pt;
+    margin: 0 0 8px;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    color: #0f0e1a;
+  }
+  .cover h2 {
+    font-size: 16pt;
+    margin: 0 0 28px;
+    color: #555066;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+  }
+  .cover .meta {
+    font-size: 10pt;
+    color: #6b6478;
+    line-height: 1.7;
+  }
+  .cover .meta strong { color: #1c1b22; font-weight: 600; }
+  .cover .pitch {
+    margin-top: 30px;
+    padding: 14px 18px;
+    background: #f6f4fb;
+    border-left: 3px solid #c4b5fd;
+    font-size: 11pt;
+    color: #2d2940;
+    line-height: 1.6;
+  }
+  h1, h2, h3, h4 {
+    color: #0f0e1a;
+    letter-spacing: -0.01em;
+    font-weight: 600;
+    margin-top: 28px;
+    margin-bottom: 10px;
+  }
+  h1.section {
+    font-size: 22pt;
+    border-bottom: 2px solid #1c1b22;
+    padding-bottom: 6px;
+    margin-top: 0;
+    page-break-before: always;
+  }
+  h1.section:first-of-type { page-break-before: auto; }
+  h2 { font-size: 14pt; color: #2a2640; margin-top: 24px; }
+  h3 {
+    font-size: 11.5pt;
+    color: #432f87;
+    border-bottom: 1px dashed #d6cfea;
+    padding-bottom: 3px;
+    margin-top: 22px;
+  }
+  h4 { font-size: 10.5pt; color: #4a3f7a; margin-top: 16px; margin-bottom: 4px; }
+  p { margin: 8px 0; }
+  ul, ol { margin: 6px 0 12px 0; padding-left: 22px; }
+  li { margin: 3px 0; }
+  code {
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 9.5pt;
+    background: #f3f1f9;
+    color: #5a3ab8;
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  pre {
+    background: #14121f;
+    color: #e6e1f4;
+    padding: 12px 14px;
+    border-radius: 6px;
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 8.8pt;
+    line-height: 1.5;
+    overflow-x: auto;
+    page-break-inside: avoid;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+  }
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    font-size: inherit;
+  }
+  .file-card {
+    border: 1px solid #e3dff0;
+    border-left: 3px solid #7c3aed;
+    border-radius: 4px;
+    padding: 12px 16px;
+    margin: 14px 0;
+    background: #fbfaff;
+    page-break-inside: avoid;
+  }
+  .file-card .path {
+    font-family: "SF Mono", monospace;
+    font-size: 10pt;
+    color: #2d2540;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .file-card .role {
+    font-size: 9pt;
+    color: #7c3aed;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .file-card p:first-of-type { margin-top: 0; }
+  .file-card p:last-child { margin-bottom: 0; }
+  .file-card ul { margin-bottom: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  th, td {
+    text-align: left;
+    padding: 7px 10px;
+    border-bottom: 1px solid #e3dff0;
+    vertical-align: top;
+  }
+  th {
+    background: #f3f1f9;
+    color: #2d2540;
+    font-weight: 600;
+    font-size: 9.5pt;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .callout {
+    background: #fff7ed;
+    border-left: 3px solid #f59e0b;
+    padding: 10px 14px;
+    margin: 12px 0;
+    border-radius: 3px;
+    font-size: 10pt;
+    page-break-inside: avoid;
+  }
+  .callout.tip {
+    background: #ecfdf5;
+    border-left-color: #10b981;
+  }
+  .callout.warn {
+    background: #fef2f2;
+    border-left-color: #ef4444;
+  }
+  .callout strong { display: block; margin-bottom: 3px; }
+  .tree {
+    background: #14121f;
+    color: #e6e1f4;
+    padding: 14px 18px;
+    border-radius: 6px;
+    font-family: "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: 9pt;
+    line-height: 1.5;
+    white-space: pre;
+    page-break-inside: avoid;
+  }
+  .tree .dir { color: #c4b5fd; font-weight: 600; }
+  .tree .comment { color: #7c7493; font-style: italic; }
+  .toc {
+    columns: 2;
+    column-gap: 28px;
+    font-size: 10pt;
+  }
+  .toc a {
+    color: #432f87;
+    text-decoration: none;
+  }
+  .toc ul { margin: 0; padding-left: 18px; }
+  .small { font-size: 9.5pt; color: #6b6478; }
+  .badge {
+    display: inline-block;
+    font-family: "SF Mono", monospace;
+    font-size: 8.5pt;
+    font-weight: 600;
+    padding: 1px 7px;
+    border-radius: 3px;
+    margin-right: 4px;
+  }
+  .badge.get { background: #ecfdf5; color: #047857; border: 1px solid #a7f3d0; }
+  .badge.post { background: #f5f3ff; color: #6d28d9; border: 1px solid #ddd6fe; }
+  .badge.put { background: #fffbeb; color: #b45309; border: 1px solid #fde68a; }
+  .badge.delete { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  hr { border: 0; border-top: 1px solid #e3dff0; margin: 22px 0; }
+  .kvtable td:first-child {
+    width: 30%;
+    font-family: "SF Mono", monospace;
+    font-size: 9.5pt;
+    color: #5a3ab8;
+  }
+</style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- COVER -->
+<!-- ============================================================ -->
+<div class="cover">
+  <div class="eyebrow">Project Onboarding Guide</div>
+  <h1>RL Console</h1>
+  <h2>A desktop console for Rocketlane API operations.</h2>
+  <div class="meta">
+    <strong>Owner:</strong> Vikas Gautam &nbsp;·&nbsp; <strong>Org:</strong> Rocketlane<br>
+    <strong>Stack:</strong> Tauri 2 · Next.js 16 · React 19 · TypeScript · Rust · Tailwind 4 · SQLite<br>
+    <strong>Status:</strong> Internal tool — currently tested against test-account endpoints only.<br>
+    <strong>Repo path:</strong> <code>/Users/vikasgautam/Desktop/script writer/script-gen</code>
+  </div>
+  <div class="pitch">
+    This guide describes <strong>every file</strong> in the repository. After reading it, you should
+    be able to open the project, find the right file for a change, and start editing — without first
+    having to read the whole codebase.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- TOC -->
+<!-- ============================================================ -->
+<h1 class="section" id="toc">Contents</h1>
+<div class="toc">
+  <ol>
+    <li><a href="#overview">What the app does</a></li>
+    <li><a href="#stack">Tech stack & runtime model</a></li>
+    <li><a href="#flows">The three flows</a></li>
+    <li><a href="#tree">Directory map</a></li>
+    <li><a href="#root">Root config files</a></li>
+    <li><a href="#tauri">Tauri (Rust) layer</a></li>
+    <li><a href="#types">Shared types</a></li>
+    <li><a href="#lib">lib/ — domain logic</a></li>
+    <li><a href="#app">app/ — Next.js routes & components</a></li>
+    <li><a href="#components">app/components/ — UI</a></li>
+    <li><a href="#page">app/page.tsx — the orchestrator</a></li>
+    <li><a href="#conventions">Conventions & gotchas</a></li>
+    <li><a href="#tasks">Common dev tasks</a></li>
+    <li><a href="#runbuild">Build & run</a></li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<!-- 1. WHAT THE APP DOES -->
+<!-- ============================================================ -->
+<h1 class="section" id="overview">1. What the app does</h1>
+
+<p>RL Console is a small <strong>desktop app</strong> that lets a Rocketlane operator (or anyone with API
+access) do three things, faster:</p>
+
+<ol>
+  <li><strong>Generate a curl from plain English.</strong> Type <em>"create a task with start date and effort"</em>;
+    Claude returns a curl with <code>{{Placeholder}}</code> variables.</li>
+  <li><strong>Fire a single request</strong> with values typed inline, or <strong>fire bulk requests</strong>
+    by uploading a CSV — Claude maps each <code>{{Placeholder}}</code> to a CSV column.</li>
+  <li><strong>Auto-paginate GET endpoints</strong>, see live progress, ETA, abort mid-fetch, and export
+    the raw items as CSV.</li>
+</ol>
+
+<p>Everything happens locally. No backend service. The only network calls are to:</p>
+<ul>
+  <li><code>api.anthropic.com</code> — for Claude (mapping + curl generation)</li>
+  <li><code>api.rocketlane.com</code> — for the actual operations</li>
+</ul>
+
+<div class="callout warn">
+  <strong>Why a desktop app at all?</strong>
+  Anthropic's CORS policy on Vikas's org blocks browser-origin calls. A Tauri shell with a Rust
+  HTTP command sidesteps this — see <a href="#tauri">Tauri layer</a> and <code>native_http_post</code>.
+</div>
+
+<!-- ============================================================ -->
+<!-- 2. TECH STACK -->
+<!-- ============================================================ -->
+<h1 class="section" id="stack">2. Tech stack & runtime model</h1>
+
+<h3>Layers</h3>
+<table>
+  <tr><th>Layer</th><th>What it is</th><th>Where it lives</th></tr>
+  <tr><td>Native shell</td><td>Tauri 2 (Rust) — bundles the app, owns native HTTP & SQLite</td><td><code>src-tauri/</code></td></tr>
+  <tr><td>UI</td><td>Next.js 16 (App Router) static-exported, React 19, Tailwind 4</td><td><code>app/</code></td></tr>
+  <tr><td>Domain logic</td><td>Pure TS modules — Claude calls, executor, exports, DB wrapper</td><td><code>lib/</code></td></tr>
+  <tr><td>Types</td><td>Shared TypeScript interfaces</td><td><code>types/</code></td></tr>
+</table>
+
+<h3>How it actually runs</h3>
+<p>
+  <code>npm run tauri dev</code> starts <code>next dev</code> on :3000, then opens a Tauri window
+  pointing at it. <code>npm run tauri build</code> runs <code>next build</code> (which exports
+  static HTML/JS to <code>out/</code> because of <code>output: 'export'</code> in
+  <code>next.config.ts</code>), then bundles that <code>out/</code> into a <code>.dmg</code>/<code>.app</code>.
+</p>
+
+<div class="callout">
+  <strong>This is not a server-rendered Next.js app.</strong>
+  Because of <code>output: 'export'</code>, there is <em>no</em> Node runtime in production. No API
+  routes, no <code>getServerSideProps</code>, no middleware. Everything is client-side React talking
+  to Tauri commands.
+</div>
+
+<h3>Where state lives</h3>
+<table class="kvtable">
+  <tr><td>localStorage</td><td>Claude API key (<code>claude_api_key</code>), per-endpoint API docs (<code>rl_api_docs</code>)</td></tr>
+  <tr><td>SQLite (Tauri plugin)</td><td>Saved curls, run history (file: <code>console.db</code> in app data dir)</td></tr>
+  <tr><td>In-memory only</td><td>Rocketlane API key (<code>rlKey</code> state) — <strong>never persisted</strong>, by design</td></tr>
+  <tr><td>React component state</td><td>Everything else (curl text, csv rows, logs, progress)</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<!-- 3. THE THREE FLOWS -->
+<!-- ============================================================ -->
+<h1 class="section" id="flows">3. The three flows</h1>
+<p>The whole app exists to support these three flows. Internalising them is the fastest way to navigate the code.</p>
+
+<h3>Flow A — Generate a curl from a description</h3>
+<ol>
+  <li>User types a description into the "generate" input on <a href="#page"><code>app/page.tsx</code></a>.</li>
+  <li><code>handleGenerateCurl()</code> in <code>page.tsx</code> calls <a href="#lib"><code>generateCurl()</code></a>
+    in <code>lib/generate-curl.ts</code>.</li>
+  <li><code>generateCurl()</code> calls the <code>native_http_post</code> Tauri command (in Rust) which
+    POSTs to <code>api.anthropic.com</code> and returns the raw response body.</li>
+  <li>The returned curl text is dropped into the <em>Curl Command</em> textarea.</li>
+</ol>
+
+<h3>Flow B — Bulk run with CSV mapping</h3>
+<ol>
+  <li>User pastes/edits a curl, uploads a CSV, fills context.</li>
+  <li>Clicks <em>Preview Mapping</em> → <code>handlePreviewMapping()</code> calls
+    <a href="#lib"><code>extractMapping()</code></a> in <code>lib/claude.ts</code>, which sends the curl + sample CSV to Claude
+    and gets back a strict JSON template (validated with Zod).</li>
+  <li><a href="#components"><code>MappingPreviewModal</code></a> shows the resolved request for row 1.</li>
+  <li>User confirms → <code>handleRun()</code> → <code>runRows()</code> loops over CSV rows, calling
+    <a href="#lib"><code>executeRow()</code></a> per row.</li>
+  <li><code>executeRow()</code> uses <code>buildRequest()</code> to substitute placeholders, then
+    <code>httpFetch()</code> (which routes through Tauri's HTTP plugin) to send the request.</li>
+  <li>Logs stream into <a href="#components"><code>LogPanel</code></a> with progress + ETA.</li>
+  <li>On finish, the run is saved to SQLite via <code>saveRun()</code>.</li>
+</ol>
+
+<h3>Flow C — GET with auto-pagination</h3>
+<ol>
+  <li>If the curl method is GET, mode toggle is locked, "Run" is enabled with just placeholders filled.</li>
+  <li><code>handleRun()</code> detects GET and calls <code>executeRow()</code> <strong>once</strong>
+    with an <code>onPageFetched</code> callback.</li>
+  <li>The GET branch in <code>executeRow()</code> loops through pages while a <code>nextPageToken</code>
+    is returned (and <code>hasMore !== false</code>), up to <code>MAX_PAGES = 200</code>.</li>
+  <li>After each page it fires the callback so the UI can update <code>fetchProgress</code> live.</li>
+  <li>Results are either expanded as one log entry per item (≤ 200 items) or summarised with raw items
+    attached (<code>LogEntry.items</code>) for CSV export.</li>
+  <li>Aborting flips <code>abortRef.current = true</code>; the loop returns partial results as <code>'skipped'</code>.</li>
+</ol>
+
+<!-- ============================================================ -->
+<!-- 4. DIRECTORY MAP -->
+<!-- ============================================================ -->
+<h1 class="section" id="tree">4. Directory map</h1>
+
+<div class="tree">script-gen/
+├── <span class="dir">app/</span>                          <span class="comment"># Next.js App Router pages + UI components</span>
+│   ├── <span class="dir">components/</span>               <span class="comment"># React components — one file per concern</span>
+│   │   ├── EndpointPicker.tsx       <span class="comment"># Dropdown to insert endpoint docs into context</span>
+│   │   ├── HistoryView.tsx          <span class="comment"># Past-runs table</span>
+│   │   ├── LogPanel.tsx             <span class="comment"># Right pane: live logs + ETA + summary + actions</span>
+│   │   ├── MappingPreviewModal.tsx  <span class="comment"># Modal showing resolved request before firing</span>
+│   │   ├── SaveCurlModal.tsx        <span class="comment"># Tiny "name this curl" prompt</span>
+│   │   ├── SettingsModal.tsx        <span class="comment"># LEGACY/UNUSED — was a Gemini-key modal</span>
+│   │   ├── SettingsView.tsx         <span class="comment"># Full settings page (Claude key + per-endpoint docs)</span>
+│   │   └── SplashScreen.tsx         <span class="comment"># 2.6s boot animation</span>
+│   ├── globals.css                  <span class="comment"># Tailwind v4 import + keyframes + .input/.btn-ghost</span>
+│   ├── layout.tsx                   <span class="comment"># Root layout — fonts + &lt;html&gt;/&lt;body&gt; shell</span>
+│   └── page.tsx                     <span class="comment"># THE app — orchestrates everything (~990 lines)</span>
+├── <span class="dir">lib/</span>                          <span class="comment"># Pure TS modules — testable, no React</span>
+│   ├── claude.ts                    <span class="comment"># Mapping extraction (Curl + CSV → JSON template)</span>
+│   ├── db.ts                        <span class="comment"># SQLite wrapper — saved curls, run history</span>
+│   ├── executor.ts                  <span class="comment"># buildRequest + executeRow (the actual API caller)</span>
+│   ├── export.ts                    <span class="comment"># downloadCSV helper</span>
+│   ├── generate-curl.ts             <span class="comment"># "describe → curl" via Claude</span>
+│   ├── rl-api-endpoints.ts          <span class="comment"># Static catalogue of Rocketlane endpoints + doc store</span>
+│   └── tauri-fetch.ts               <span class="comment"># Routes fetch through Tauri HTTP plugin or browser</span>
+├── <span class="dir">types/</span>
+│   └── index.ts                     <span class="comment"># MappingTemplate, LogEntry, RunSummary, SavedCurl, RunRecord</span>
+├── <span class="dir">src-tauri/</span>                    <span class="comment"># The Rust shell</span>
+│   ├── <span class="dir">capabilities/</span>
+│   │   └── default.json             <span class="comment"># Permission allowlist (which URLs Tauri HTTP can hit)</span>
+│   ├── <span class="dir">src/</span>
+│   │   ├── lib.rs                   <span class="comment"># Tauri builder + native_http_post command</span>
+│   │   └── main.rs                  <span class="comment"># 4-line entry point</span>
+│   ├── build.rs
+│   ├── Cargo.toml                   <span class="comment"># Rust deps: tauri, reqwest, sql/http/dialog plugins</span>
+│   └── tauri.conf.json              <span class="comment"># Window size, bundle ID, dev/build commands</span>
+├── <span class="dir">public/</span>                       <span class="comment"># Static assets (rli.svg is the logo — rl.svg is broken)</span>
+├── package.json                     <span class="comment"># JS deps + scripts</span>
+├── tsconfig.json
+├── next.config.ts                   <span class="comment"># output: 'export' — static build for Tauri</span>
+├── postcss.config.mjs               <span class="comment"># Tailwind v4 PostCSS plugin</span>
+├── eslint.config.mjs
+├── AGENTS.md / CLAUDE.md            <span class="comment"># "Read the docs before coding" reminder for AI assistants</span>
+└── README.md                        <span class="comment"># Stock create-next-app readme — ignore it</span></div>
+
+<!-- ============================================================ -->
+<!-- 5. ROOT CONFIG -->
+<!-- ============================================================ -->
+<h1 class="section" id="root">5. Root config files</h1>
+
+<div class="file-card">
+  <div class="path">package.json</div>
+  <div class="role">Top-level dependency manifest</div>
+  <p>Scripts are stock Next.js: <code>dev</code>, <code>build</code>, <code>start</code>, <code>lint</code>.
+    To open the desktop app, you run <code>npm run tauri dev</code> instead — Tauri triggers the
+    Next dev server itself (see <code>tauri.conf.json</code> → <code>beforeDevCommand</code>).</p>
+  <p><strong>Notable deps:</strong></p>
+  <ul>
+    <li><code>@anthropic-ai/sdk</code> — installed but <strong>not used</strong>; calls go through Rust. Safe to keep around but you could drop it.</li>
+    <li><code>@google/genai</code> — leftover from the Gemini era; also unused. Safe to remove.</li>
+    <li><code>@tauri-apps/api</code> + <code>plugin-http</code> + <code>plugin-sql</code> + <code>plugin-dialog</code> — the JS sides of the Tauri plugins.</li>
+    <li><code>papaparse</code> — CSV parser.</li>
+    <li><code>zod</code> — validates Claude's mapping JSON in <code>lib/claude.ts</code>.</li>
+  </ul>
+</div>
+
+<div class="file-card">
+  <div class="path">next.config.ts</div>
+  <div class="role">Next.js config</div>
+  <p>Two lines that matter:</p>
+  <ul>
+    <li><code>output: 'export'</code> — produces static HTML/JS in <code>out/</code> (Tauri bundles this).</li>
+    <li><code>images: { unoptimized: true }</code> — required for static export.</li>
+  </ul>
+  <p>Don't add API routes or server components — they won't ship.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">tsconfig.json</div>
+  <div class="role">TypeScript config</div>
+  <p>Standard Next.js setup. The path alias <code>@/* → ./*</code> means <code>@/lib/foo</code>
+    resolves from project root — used everywhere in imports.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">postcss.config.mjs</div>
+  <div class="role">Tailwind v4 PostCSS config</div>
+  <p>One plugin: <code>@tailwindcss/postcss</code>. Tailwind v4 doesn't need a <code>tailwind.config</code> —
+    theme tokens live in <code>app/globals.css</code> via <code>@theme inline</code>.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">eslint.config.mjs</div>
+  <div class="role">ESLint flat config</div>
+  <p>Just composes <code>eslint-config-next</code>'s vitals + TS rules. No custom rules.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">AGENTS.md / CLAUDE.md</div>
+  <div class="role">AI-assistant instructions</div>
+  <p><code>CLAUDE.md</code> is one line: <code>@AGENTS.md</code> (an include).
+    <code>AGENTS.md</code> warns: <em>"This is NOT the Next.js you know. Read
+    <code>node_modules/next/dist/docs/</code> before coding."</em>
+    Take it seriously — Next.js 16 has breaking changes vs older versions.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">README.md</div>
+  <div class="role">Auto-generated stock readme</div>
+  <p>This was never updated from the <code>create-next-app</code> default. It does not describe RL Console.
+    Consider replacing it (or just use this guide).</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 6. TAURI / RUST -->
+<!-- ============================================================ -->
+<h1 class="section" id="tauri">6. Tauri (Rust) layer — <code>src-tauri/</code></h1>
+
+<p>This layer is small but load-bearing. Two responsibilities: (1) the native HTTP command that bypasses
+Anthropic's CORS, (2) plugin registration for SQLite, the HTTP fetch plugin, and dialogs.</p>
+
+<div class="file-card">
+  <div class="path">src-tauri/src/main.rs</div>
+  <div class="role">Binary entry point — 6 lines</div>
+  <p>Calls <code>app_lib::run()</code>. Don't change.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">src-tauri/src/lib.rs</div>
+  <div class="role">The Tauri builder + the only custom Rust command</div>
+  <p>Two things to know:</p>
+  <ol>
+    <li><code>native_http_post</code> — a <code>#[tauri::command]</code> that takes <code>url</code>,
+      <code>headers</code>, <code>body</code> strings and POSTs them via <code>reqwest</code>. The TS
+      side calls it with <code>invoke('native_http_post', { url, headers, body })</code>.
+      We use it for <strong>only</strong> the Anthropic API, because the Tauri HTTP plugin still
+      identifies as a browser and Anthropic's CORS policy on this org blocks that.</li>
+    <li><code>run()</code> registers four plugins: <code>tauri-plugin-dialog</code>, <code>-http</code>,
+      <code>-sql</code>, <code>-log</code> (debug only) — and the <code>native_http_post</code> handler.</li>
+  </ol>
+  <div class="callout">
+    <strong>If you add a new Rust command,</strong> register its function name in the
+    <code>tauri::generate_handler![...]</code> macro, then call it from TS with <code>invoke()</code>.
+  </div>
+</div>
+
+<div class="file-card">
+  <div class="path">src-tauri/Cargo.toml</div>
+  <div class="role">Rust dependencies</div>
+  <p>Adds: <code>tauri</code>, the four <code>tauri-plugin-*</code> crates, and <code>reqwest</code>
+    for the native HTTP command. The <code>sqlite</code> feature on <code>tauri-plugin-sql</code>
+    is what gives us SQLite (vs MySQL/Postgres alternatives).</p>
+</div>
+
+<div class="file-card">
+  <div class="path">src-tauri/tauri.conf.json</div>
+  <div class="role">App identity, window, build hooks</div>
+  <p>Highlights:</p>
+  <ul>
+    <li><code>productName: "rl-console"</code>, <code>identifier: "com.rocketlane.api-console"</code></li>
+    <li><code>frontendDist: "../out"</code> — points to Next.js's static export output</li>
+    <li><code>devUrl: "http://localhost:3000"</code> + <code>beforeDevCommand: "npm run dev"</code> — Tauri auto-starts Next.js dev</li>
+    <li>Window: 1200×800, resizable, title "RL Console"</li>
+    <li><code>security.csp: null</code> — CSP disabled. Fine for a local-only app.</li>
+  </ul>
+</div>
+
+<div class="file-card">
+  <div class="path">src-tauri/capabilities/default.json</div>
+  <div class="role">Permission allowlist for the Tauri HTTP plugin</div>
+  <p>Tauri's HTTP plugin will only fetch URLs explicitly allowed here. Currently allowed:</p>
+  <ul>
+    <li><code>https://api.anthropic.com/**</code></li>
+    <li><code>https://api.rocketlane.com/**</code></li>
+    <li><code>https://*.rocketlane.com/**</code></li>
+  </ul>
+  <p>SQLite operations <code>load</code>/<code>execute</code>/<code>select</code>/<code>close</code>
+    are also allowed. <strong>If you add a new external host, you must add it here</strong> or
+    <code>httpFetch()</code> calls will fail silently.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">src-tauri/build.rs</div>
+  <div class="role">Standard Tauri build script — never touched</div>
+</div>
+
+<!-- ============================================================ -->
+<!-- 7. TYPES -->
+<!-- ============================================================ -->
+<h1 class="section" id="types">7. Shared types — <code>types/index.ts</code></h1>
+
+<p>Five interfaces that flow through the whole app. Read these once and the rest of the code reads itself.</p>
+
+<table class="kvtable">
+  <tr><td>MappingTemplate</td><td>Output of Claude mapping. <code>method</code>, <code>url</code>, <code>headers</code>, <code>body</code>, plus <code>mapping: { PLACEHOLDER → "session_rl_key" | csv_column }</code>.</td></tr>
+  <tr><td>LogEntry</td><td>One log row. <code>status</code>: <code>success | error | skipped | dry_run</code>. Optional <code>statusCode</code>, optional <code>items[]</code> (raw API items from a paginated GET, used for CSV export).</td></tr>
+  <tr><td>RunSummary</td><td><code>{ success, failed, skipped, dryRun }</code> counts.</td></tr>
+  <tr><td>SavedCurl</td><td>SQLite row in <code>saved_curls</code>: <code>id, name, curl_command, context, expected_outcome, created_at, last_used_at</code>.</td></tr>
+  <tr><td>RunRecord</td><td>SQLite row in <code>runs</code>: same metadata plus mode, totals, dry-run flag.</td></tr>
+</table>
+
+<div class="callout tip">
+  <strong>Pattern:</strong> <code>LogEntry.items</code> is only populated for paginated GETs that
+  exceed the in-line <code>EXPAND_LIMIT = 200</code>. The "↓ Items CSV" button in
+  <code>LogPanel</code> appears only when at least one entry has a non-empty <code>items[]</code>.
+</div>
+
+<!-- ============================================================ -->
+<!-- 8. LIB -->
+<!-- ============================================================ -->
+<h1 class="section" id="lib">8. <code>lib/</code> — domain logic</h1>
+
+<p>This is the brain of the app. None of these files import React. Each is small and single-purpose.</p>
+
+<div class="file-card">
+  <div class="path">lib/tauri-fetch.ts</div>
+  <div class="role">Environment-aware fetch wrapper (10 lines)</div>
+  <p>Exports <code>httpFetch(url, init)</code>. If running inside Tauri (detected via
+    <code>window.__TAURI_INTERNALS__</code>), routes through <code>@tauri-apps/plugin-http</code> —
+    which means the request goes through the Rust HTTP stack and bypasses browser CORS.
+    Outside Tauri (e.g. <code>npm run dev</code> in a regular browser), falls back to <code>window.fetch</code>.</p>
+  <p>This is what <code>executor.ts</code> uses for Rocketlane API calls.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">lib/claude.ts</div>
+  <div class="role">Curl + CSV → JSON mapping template, via Claude</div>
+  <p><strong>Exported function:</strong> <code>extractMapping(curlCommand, context, expectedOutcome, sampleData, claudeKey)</code>.
+    Returns a Zod-validated <code>MappingTemplate</code>.</p>
+  <p>Posts to <code>https://api.anthropic.com/v1/messages</code> via the Rust <code>native_http_post</code>
+    command. Model is hardcoded: <code>claude-haiku-4-5-20251001</code>.</p>
+  <p>The system prompt instructs Claude to:</p>
+  <ul>
+    <li>Map any auth-looking placeholder to the literal string <code>"session_rl_key"</code></li>
+    <li>Map all other placeholders to the <em>exact</em> CSV column name</li>
+    <li>Preserve <code>{{PLACEHOLDER}}</code> braces in url/headers/body — don't resolve them</li>
+  </ul>
+  <p>Response handling strips optional <code>```json</code> fences and validates against
+    <code>MappingSchema</code> (Zod). Any deviation throws.</p>
+  <div class="callout warn">
+    <strong>If you change the system prompt,</strong> also re-test the Zod schema — Claude can drop
+    the <code>mapping</code> field if you reword aggressively.
+  </div>
+</div>
+
+<div class="file-card">
+  <div class="path">lib/generate-curl.ts</div>
+  <div class="role">Description → curl command, via Claude</div>
+  <p><strong>Exported:</strong> <code>generateCurl(description, context, claudeKey, csvColumns?, csvSample?, apiDocs?)</code>.</p>
+  <p>Same Anthropic plumbing as <code>claude.ts</code>. The system prompt enforces:</p>
+  <ul>
+    <li>Use <code>{{PLACEHOLDER}}</code> syntax</li>
+    <li>Use <strong>exact</strong> CSV column names if columns are provided</li>
+    <li><strong>Only required</strong> params — no optional filters unless asked</li>
+    <li>For GET list endpoints: only <code>pageSize</code> and <code>pageToken</code></li>
+  </ul>
+  <p>The "only required" rule was added after Claude was returning curls with 50+ optional query params.
+    If you tweak the prompt, re-test against <em>Get all tasks</em> — that endpoint has the longest
+    optional-param list and is the canary.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">lib/rl-api-endpoints.ts</div>
+  <div class="role">Catalogue of Rocketlane endpoints + per-endpoint docs storage</div>
+  <p>Two responsibilities:</p>
+  <ol>
+    <li><code>RL_CATEGORIES</code>: hardcoded list of every endpoint the user might want to operate on,
+      grouped by category (Tasks, Projects, Phases, …). Each entry has a <code>key</code> (e.g.
+      <code>tasks.create</code>), a display <code>name</code>, and an <code>HttpMethod</code>.
+      <strong>To add a new endpoint:</strong> append to the right category — that's it.</li>
+    <li><code>loadApiDocs()</code> / <code>saveApiDocs(docs)</code>: read/write the user's pasted
+      endpoint docs from <code>localStorage[rl_api_docs]</code> as a <code>{ key: text }</code> map.
+      Used by Settings (write) and EndpointPicker / Generate flow (read).</li>
+  </ol>
+</div>
+
+<div class="file-card">
+  <div class="path">lib/db.ts</div>
+  <div class="role">SQLite wrapper for saved curls + run history</div>
+  <p>Lazy-loads <code>@tauri-apps/plugin-sql</code> only inside Tauri (so a regular browser dev session
+    doesn't crash). All exports are no-ops if the DB isn't available.</p>
+  <p><strong>Schema (created on first <code>initDb()</code>):</strong></p>
+<pre><code>saved_curls: id, name UNIQUE, curl_command, context, expected_outcome,
+             created_at, last_used_at
+
+runs:        id, curl_name, curl_command, context, expected_outcome,
+             mode, total_rows, succeeded, failed, skipped,
+             dry_run_count, is_dry_run, created_at</code></pre>
+  <p><strong>Functions:</strong> <code>initDb</code>, <code>getSavedCurls</code>, <code>saveCurl</code>
+    (INSERT OR REPLACE on name), <code>deleteSavedCurl</code>, <code>touchCurl</code> (updates
+    <code>last_used_at</code>), <code>saveRun</code>, <code>deleteRun</code>, <code>getRuns(limit=100)</code>.</p>
+  <div class="callout">
+    <strong>Where the DB file lives:</strong> Tauri stores <code>console.db</code> in the OS app-data
+    dir (on macOS: <code>~/Library/Application Support/com.rocketlane.api-console/</code>).
+    A <code>.dmg</code> reinstall does <em>not</em> blow it away, but switching between dev (<code>npm run tauri dev</code>)
+    and the bundled <code>.app</code> uses different bundle IDs in some Tauri setups — that's the
+    cause of "my settings disappeared" reports. The Settings export/import JSON is the workaround.
+  </div>
+</div>
+
+<div class="file-card">
+  <div class="path">lib/executor.ts</div>
+  <div class="role">The actual API caller — biggest file in <code>lib/</code></div>
+  <p>This is where every real Rocketlane request originates. Read this file once carefully.</p>
+
+  <h4>Internal helpers</h4>
+  <ul>
+    <li><code>fill(value, row, rlKey, mapping)</code> — substitutes <code>{{X}}</code> placeholders in a string
+      using the mapping (<code>session_rl_key</code> → real RL key, otherwise CSV column lookup).</li>
+    <li><code>fillDeep(val, ...)</code> — same, but recurses into objects/arrays. Used for the body.</li>
+    <li><code>cleanUrl(url)</code> — for GET, strips query params whose value is empty or still an unresolved
+      <code>{{...}}</code>. Lets you leave optional filters in the curl without sending them.</li>
+    <li><code>stripEmptyFields(val)</code> — recursively removes empty/unresolved fields from the body.
+      Same idea: optional fields can stay in the curl but won't be sent if blank.</li>
+    <li><code>summarizeItem(item)</code> / <code>summarizeBody(text)</code> — builds the short
+      "<code>id: 12 · projectName: "Acme"</code>" message shown in the log. <code>INTERESTING_KEYS</code>
+      is the priority list for what to surface.</li>
+  </ul>
+
+  <h4>Public API</h4>
+  <ul>
+    <li><code>buildRequest(template, row, rlKey)</code> → <code>{ method, url, headers, body }</code>.
+      Used both by <code>executeRow</code> and by <code>MappingPreviewModal</code> to show the resolved
+      request before firing.</li>
+    <li><code>validateRow(template, row)</code> → <code>string | null</code>. Only fails if a placeholder
+      that appears in the URL <em>path</em> (before <code>?</code>) maps to an empty CSV column.
+      Body-only and query-only placeholders are not validated here — the API will respond.</li>
+    <li><code>executeRow(template, row, rlKey, dryRun, rowIndex, onPageFetched?, abortRef?)</code>
+      → <code>Promise&lt;LogEntry[]&gt;</code> — the main act.</li>
+  </ul>
+
+  <h4>Behaviour matrix</h4>
+  <table>
+    <tr><th>Mode</th><th>What happens</th></tr>
+    <tr><td>Dry run</td><td>Returns one <code>dry_run</code> entry showing the resolved <code>METHOD URL</code>.</td></tr>
+    <tr><td>Non-GET</td><td>Validates → fires once → returns one entry (success/error).</td></tr>
+    <tr><td>GET</td><td>Adds <code>pageSize=100</code> if missing, loops while <code>nextPageToken</code> + <code>hasMore !== false</code>, capped at <code>MAX_PAGES = 200</code>. Fires <code>onPageFetched</code> after every page. Honours <code>abortRef.current</code>.</td></tr>
+  </table>
+  <p><strong>GET expansion threshold:</strong> if <code>allItems.length ≤ EXPAND_LIMIT (200)</code>,
+    each item becomes its own <code>LogEntry</code> with row <code>rowIndex + i</code>. Otherwise a
+    single summary entry is returned with the full <code>items[]</code> attached for CSV export.</p>
+
+  <div class="callout warn">
+    <strong>Two recent bug-fix invariants — don't regress them:</strong><br>
+    (1) Pagination must check <code>hasMore !== false</code>, not just the presence of <code>nextPageToken</code> —
+    some endpoints return <code>hasMore: false</code> with a stale token.<br>
+    (2) <code>abortRef</code> must be checked <strong>before</strong> each page fetch, not after — so a
+    long-running GET stops promptly.
+  </div>
+</div>
+
+<div class="file-card">
+  <div class="path">lib/export.ts</div>
+  <div class="role">Tiny CSV download helper</div>
+  <p><code>downloadCSV(filename, data)</code>: takes an array of objects, derives columns from the first
+    row, escapes via doubled quotes, and triggers an <code>&lt;a download&gt;</code> click.
+    Used by all three export buttons in <code>LogPanel</code>.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 9. APP -->
+<!-- ============================================================ -->
+<h1 class="section" id="app">9. <code>app/</code> — Next.js app router shell</h1>
+
+<div class="file-card">
+  <div class="path">app/layout.tsx</div>
+  <div class="role">Root layout — runs once, wraps the whole UI</div>
+  <p>Loads Geist Sans + Geist Mono via <code>next/font/google</code> and exposes them as CSS variables.
+    Sets <code>&lt;html lang="en"&gt;</code> + <code>antialiased</code>, <code>&lt;body&gt;</code> with a flex column.
+    Page <code>title: "RL Console"</code>.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">app/globals.css</div>
+  <div class="role">Theme tokens, splash/modal animations, custom utility classes</div>
+  <p>Loads Tailwind v4 with <code>@import "tailwindcss"</code>. Three sections:</p>
+  <ol>
+    <li><strong>Theme:</strong> <code>--background: #09080f</code>, <code>--foreground: #ede9fe</code>;
+      exposed as Tailwind theme via <code>@theme inline</code>. Body uses these.</li>
+    <li><strong>Keyframes:</strong> <code>splash-logo-in</code>, <code>splash-text-in</code>,
+      <code>splash-dot</code>, <code>splash-glow</code>, <code>splash-out</code> (all used by SplashScreen);
+      <code>backdrop-in</code>, <code>modal-in</code>, <code>spin</code> (used by modals + toasts).</li>
+    <li><strong>Utility classes:</strong> <code>.input</code>, <code>.btn-ghost</code>, <code>.label</code>,
+      <code>.divider</code>, <code>.animate-modal</code>, <code>.animate-backdrop</code>,
+      <code>.animate-spin-sm</code>. Plus violet-tinted scrollbar styling.</li>
+  </ol>
+</div>
+
+<!-- ============================================================ -->
+<!-- 10. COMPONENTS -->
+<!-- ============================================================ -->
+<h1 class="section" id="components">10. <code>app/components/</code> — UI</h1>
+
+<div class="file-card">
+  <div class="path">app/components/SplashScreen.tsx</div>
+  <div class="role">Boot animation — 2.65s</div>
+  <p>Mounted by <code>page.tsx</code> when <code>showSplash</code> is true. Animation choreography:</p>
+  <ul>
+    <li>0.10s — logo springs in (cubic-bezier overshoot)</li>
+    <li>0.72s — wordmark slides up</li>
+    <li>1.05s — dots start pulsing</li>
+    <li>2.10s — exit animation begins</li>
+    <li>2.65s — calls <code>onDone()</code> → splash unmounts</li>
+  </ul>
+  <p>Logo path is <code>/rli.svg</code>. <strong>Don't change it to <code>/rl.svg</code></strong> —
+    that file is corrupt (binary masquerading as SVG).</p>
+</div>
+
+<div class="file-card">
+  <div class="path">app/components/EndpointPicker.tsx</div>
+  <div class="role">Dropdown that injects an endpoint's docs into the Context field</div>
+  <p>Renders the "Endpoint docs" button next to the Context label. When opened, shows a searchable list
+    of all <code>RL_CATEGORIES</code> with method badges (GET/POST/PUT/DELETE colour-coded).
+    Endpoints with no docs filled are dimmed and disabled.</p>
+  <p>On selection: <code>onSelect(docs[ep.key], ep.method)</code> — the parent uses this to
+    set both the context text and a <code>pickedMethod</code> override (which beats the auto-detected
+    method from the curl text).</p>
+</div>
+
+<div class="file-card">
+  <div class="path">app/components/SettingsView.tsx</div>
+  <div class="role">Full settings page (Settings tab)</div>
+  <p>Two halves:</p>
+  <ol>
+    <li><strong>Top bar:</strong> Claude API key field (with show/hide), Save button, Import/Export
+      buttons. Export downloads <code>rl-console-settings.json</code> with <code>{ claudeKey, docs }</code>.
+      Import reads a JSON file and writes both back. This is the user's backup mechanism for the
+      "settings evaporated after .dmg reinstall" scenario.</li>
+    <li><strong>Two-panel doc editor:</strong> Left sidebar lists <code>RL_CATEGORIES</code> with
+      a <code>filled/total</code> badge per category. Right panel lists endpoints; clicking expands
+      a textarea to paste/edit docs. Auto-saved on every keystroke via <code>saveApiDocs()</code>.</li>
+  </ol>
+</div>
+
+<div class="file-card">
+  <div class="path">app/components/HistoryView.tsx</div>
+  <div class="role">Past-runs table (History tab)</div>
+  <p>Pure presentation — receives <code>runs: RunRecord[]</code> from <code>page.tsx</code>.
+    Columns: time, curl name, mode, rows, result counts (with coloured icons), Load + delete actions.
+    "Load" populates the operation form with this run's curl + context — does <em>not</em> re-fire it.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">app/components/MappingPreviewModal.tsx</div>
+  <div class="role">Confirmation modal shown after Preview Mapping</div>
+  <p>Two tabs (when CSV is loaded):</p>
+  <ul>
+    <li><strong>Field Mapping:</strong> shows each <code>{{Placeholder}} → column "X" = "value"</code>,
+      then the resolved request (method, URL, headers — auth headers truncated, body pretty-printed).
+      Warns about unresolved placeholders.</li>
+    <li><strong>CSV Data:</strong> first 20 rows of the CSV in a scrollable table.</li>
+  </ul>
+  <p>Confirm button copy and styling differ for dry run (indigo) vs real run (white, with row-count warning).</p>
+  <p>Uses <code>buildRequest()</code> from <code>lib/executor.ts</code> — same code path as the actual run, so the preview is faithful.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">app/components/SaveCurlModal.tsx</div>
+  <div class="role">"Name this curl" prompt — 56 lines</div>
+  <p>Single text input. Submits via Enter or button. Triggers <code>saveCurl(name, ...)</code> in <code>db.ts</code>,
+    which does INSERT OR REPLACE — so re-saving with the same name overwrites.</p>
+</div>
+
+<div class="file-card">
+  <div class="path">app/components/LogPanel.tsx</div>
+  <div class="role">Right-side output pane</div>
+  <p>The most prop-heavy component. Layout, top to bottom:</p>
+  <ol>
+    <li>Header — "OUTPUT" label, <code>current/total</code> counter or "running" pulse, Abort/Clear buttons</li>
+    <li>ETA strip — only when <code>isRunning && eta && progress</code>:
+      <em>"23 done · 77 remaining · ~1m 45s left · done ~3:42 PM"</em></li>
+    <li>Progress bar — 2px violet, width = <code>current / total</code></li>
+    <li>Live fetch-progress strip — only during GET pagination, shows <em>"Fetching page N · X / Y items"</em></li>
+    <li>Scrolling log entries — auto-scrolls to bottom on every new log via <code>bottomRef</code></li>
+    <li>Summary footer — counts + Retry / Errors CSV / Run log CSV / Items CSV buttons (each shown conditionally)</li>
+  </ol>
+  <p>Helpers: <code>fmtMs()</code> (<em>"~1m 45s"</em>), <code>fmtTime()</code> (locale clock).</p>
+</div>
+
+<div class="file-card">
+  <div class="path">app/components/SettingsModal.tsx</div>
+  <div class="role">⚠ LEGACY — unused</div>
+  <p>This file references a Gemini API key. The app now uses <code>SettingsView</code> (full page) for
+    the Claude key. <strong>Safe to delete</strong> — nothing imports it. Left in the repo from the
+    Gemini → Claude migration.</p>
+</div>
+
+<!-- ============================================================ -->
+<!-- 11. PAGE.TSX -->
+<!-- ============================================================ -->
+<h1 class="section" id="page">11. <code>app/page.tsx</code> — the orchestrator</h1>
+
+<p>~990 lines, but follows a predictable shape. Reading the function names in order is enough to navigate.
+The file is the only "page" in the App Router (we don't have routing — three views are conditionally
+rendered inside this single component).</p>
+
+<h3>Top-of-file utilities (lines ~20-69)</h3>
+<ul>
+  <li><code>parsePlaceholders(curl)</code> — extracts <code>{{NAME}}</code> tokens from text. <strong>Pure.</strong></li>
+  <li><code>logToRow(entry)</code> — flattens a <code>LogEntry</code> to a CSV-friendly object.</li>
+  <li><code>curlToName(curl)</code> — auto-derives a short name from a curl, e.g. <em>"DELETE /tasks/{{TaskId}}"</em>.</li>
+  <li><code>parseCurlDirect(curl)</code> — <strong>fallback parser</strong> for GET runs that don't go
+    through Claude. Handles both <code>-X GET</code> and <code>-G --data-urlencode</code> styles.
+    Used by <code>handleRun()</code> when <code>template === null</code>.</li>
+</ul>
+
+<h3>State (lines ~72-145)</h3>
+<p>Grouped by concern in the file. Highlights:</p>
+<table>
+  <tr><th>Group</th><th>Fields</th></tr>
+  <tr><td>Splash + nav</td><td><code>showSplash</code>, <code>activeView</code> (<code>operation | history | settings</code>)</td></tr>
+  <tr><td>Session keys</td><td><code>rlKey</code> (in-memory only), <code>claudeKey</code> (from localStorage)</td></tr>
+  <tr><td>Operation inputs</td><td><code>curlCmd</code>, <code>context</code>, <code>expectedOutcome</code>, <code>mode</code>, <code>dryRun</code>, <code>delayMs</code>, <code>singleValues</code></td></tr>
+  <tr><td>Derived</td><td><code>placeholders</code>, <code>detectedMethod</code>, <code>effectiveMethod</code>, <code>isGetMethod</code></td></tr>
+  <tr><td>CSV</td><td><code>csvFile</code>, <code>csvRows</code>, <code>csvColumns</code>, <code>csvError</code></td></tr>
+  <tr><td>Generation</td><td><code>showGenerate</code>, <code>generateDesc</code>, <code>isGenerating</code>, <code>generateError</code></td></tr>
+  <tr><td>Mapping</td><td><code>template</code>, <code>showPreview</code>, <code>mappingError</code>, <code>isLoadingMapping</code></td></tr>
+  <tr><td>Run</td><td><code>logs</code>, <code>isRunning</code>, <code>summary</code>, <code>progress</code>, <code>fetchProgress</code>, <code>eta</code>, <code>abortRef</code>, <code>runStartRef</code></td></tr>
+  <tr><td>Toast</td><td><code>toast</code>, <code>toastTimer</code></td></tr>
+  <tr><td>Persistence</td><td><code>savedCurls</code>, <code>runs</code>, <code>loadedCurlName</code></td></tr>
+</table>
+
+<h3>Effects + handlers</h3>
+<ul>
+  <li><code>useEffect</code> on mount — calls <code>initDb()</code>, loads saved curls + runs, reads
+    Claude key from localStorage, loads API docs.</li>
+  <li><code>useEffect</code> on <code>placeholders</code> — keeps <code>singleValues</code> dict in sync
+    when the curl text changes.</li>
+  <li><code>handleSaveCurl / handleLoadCurl / handleDeleteLoadedCurl / handleLoadFromHistory</code>
+    — the persistence glue; all delegate to <code>lib/db.ts</code>.</li>
+  <li><code>handleFileChange</code> — Papa-parses uploaded CSV.</li>
+  <li><code>handleSaveSettings(claudeKey)</code> — writes to localStorage, updates state.</li>
+  <li><code>handleGenerateCurl()</code> — calls <code>generateCurl()</code>; passes stored docs only when
+    Context is empty (avoids overwhelming Claude when context is already specific).</li>
+  <li><code>handlePreviewMapping()</code> — calls <code>extractMapping()</code>, sets <code>template</code>,
+    opens the modal.</li>
+  <li><code>runRows(rows, tpl?)</code> — the bulk loop. Sets <code>runStartRef.current = Date.now()</code>
+    at the start, then for each row: checks abort, fires <code>executeRow</code>, accumulates summary,
+    recomputes ETA from <code>elapsed / completed × remaining</code>, then sleeps <code>delayMs</code>.
+    On finish, calls <code>saveRun()</code> + clears progress/eta.</li>
+  <li><code>handleRun()</code> — branches by method:
+    GET → one <code>executeRow</code> with <code>onPageFetched</code> callback;
+    single → one <code>executeRow</code>, save run record;
+    bulk → <code>runRows(csvRows.map(...))</code>.
+  </li>
+  <li><code>handleRetryFailed()</code> — re-runs only the rows whose last log was <code>error</code>.
+    Reuses the existing <code>template</code> — no Claude call.</li>
+  <li><code>handleExportErrors / handleExportAll / handleExportItems</code> — three CSV exports.
+    Each calls <code>showToast</code> with a count for confirmation.</li>
+</ul>
+
+<h3>Derived flags driving the UI</h3>
+<ul>
+  <li><code>canPreview</code> — both keys + curl + placeholders + (single mode OR csv loaded)</li>
+  <li><code>canRun</code> — not running, RL key + curl present, GET runs always (no template needed), non-GET requires template</li>
+  <li><code>canRetry</code> — bulk mode, has template, summary has at least one failed row</li>
+  <li><code>hasGetItems</code> — at least one log entry has non-empty <code>items[]</code> (controls "Items CSV" button visibility)</li>
+</ul>
+
+<h3>JSX layout (lines ~470-990)</h3>
+<p>Single top-level container with three regions:</p>
+<ol>
+  <li><strong>Header</strong> — logo, "RL Console" title, three nav buttons (Operation/History/Settings).</li>
+  <li><strong>Main</strong> — view-switching:
+    <ul>
+      <li>Settings → <code>&lt;SettingsView&gt;</code></li>
+      <li>History → <code>&lt;HistoryView&gt;</code></li>
+      <li>Operation → split panel: <strong>left</strong> = inputs (session keys, saved curls, curl box,
+        generate, context, expected outcome, mode toggle, single fields OR CSV upload, dry-run +
+        delay, action buttons), <strong>right</strong> = <code>&lt;LogPanel&gt;</code>.</li>
+    </ul>
+  </li>
+  <li><strong>Toast</strong> — fixed bottom-centre pill, shown when <code>toast</code> is set.</li>
+  <li><strong>Modals</strong> — <code>MappingPreviewModal</code>, <code>SaveCurlModal</code>.</li>
+  <li><strong>Splash</strong> — covers everything when <code>showSplash</code>.</li>
+</ol>
+
+<div class="callout tip">
+  <strong>Reading order to understand <code>page.tsx</code> end-to-end:</strong>
+  state declarations → <code>handleRun</code> → <code>runRows</code> → <code>handleGenerateCurl</code> →
+  <code>handlePreviewMapping</code>. Everything else is glue.
+</div>
+
+<!-- ============================================================ -->
+<!-- 12. CONVENTIONS -->
+<!-- ============================================================ -->
+<h1 class="section" id="conventions">12. Conventions & gotchas</h1>
+
+<h3>Path aliases</h3>
+<p><code>@/lib/foo</code>, <code>@/types</code>, <code>@/app/components/X</code> — all resolve from project root.
+Use them; relative <code>../../</code> imports get ugly fast.</p>
+
+<h3>"use client" everywhere</h3>
+<p>Every component file starts with <code>'use client'</code>. There is no server component in this app —
+static export wouldn't ship them anyway.</p>
+
+<h3>Two HTTP code paths — choose correctly</h3>
+<table>
+  <tr><th>For…</th><th>Use…</th><th>Why</th></tr>
+  <tr><td>Anthropic / Claude calls</td><td><code>invoke('native_http_post', ...)</code> from <code>@tauri-apps/api/core</code></td><td>Browser CORS blocks Anthropic on this org. Pure Rust <code>reqwest</code> sidesteps it.</td></tr>
+  <tr><td>Rocketlane API calls</td><td><code>httpFetch()</code> from <code>lib/tauri-fetch.ts</code></td><td>Tauri HTTP plugin works fine here, and gracefully falls back to <code>fetch</code> when running outside Tauri.</td></tr>
+</table>
+
+<h3>Where settings actually live (and why they "evaporate")</h3>
+<ul>
+  <li>Claude key + per-endpoint docs → <code>localStorage</code>.</li>
+  <li>Saved curls + run history → SQLite at <code>~/Library/Application Support/com.rocketlane.api-console/console.db</code>.</li>
+  <li>If the bundle identifier in <code>tauri.conf.json</code> changes, or if a switch between
+    <code>npm run tauri dev</code> and a built <code>.app</code> uses different effective storage,
+    the user sees "blank slate" on launch. The <strong>Settings → Export/Import</strong> JSON is
+    the safety net.</li>
+</ul>
+
+<h3>Method detection</h3>
+<p>Two sources of method:</p>
+<ol>
+  <li><code>detectedMethod</code> — derived from the curl text via regex.</li>
+  <li><code>pickedMethod</code> — set when the user picks an endpoint in <code>EndpointPicker</code>.</li>
+</ol>
+<p><code>effectiveMethod = pickedMethod ?? detectedMethod</code>. Editing the curl manually clears
+<code>pickedMethod</code> (see the <code>onChange</code> on the textarea: <code>setPickedMethod(null)</code>).
+This is intentional — manual edits should win.</p>
+
+<h3>Placeholder validation</h3>
+<p>Only URL-path placeholders are required. Body and query placeholders are optional —
+<code>stripEmptyFields</code> + <code>cleanUrl</code> in the executor remove them before sending.
+This is what lets users keep "kitchen-sink" curls and pass partial CSVs.</p>
+
+<h3>The <code>RL_API_KEY</code> placeholder is special</h3>
+<p>Wherever the curl uses <code>{{RL_API_KEY}}</code>, the mapping always points to <code>session_rl_key</code>,
+and <code>fill()</code> swaps in the in-memory <code>rlKey</code> at request time. <strong>Never</strong> show
+this in CSV column dropdowns or the single-value form — it's filtered out everywhere via
+<code>p !== 'RL_API_KEY'</code>.</p>
+
+<h3>Aborting</h3>
+<p><code>abortRef</code> is a plain <code>useRef(false)</code>. The Abort button flips it to <code>true</code>.
+Both <code>runRows</code> (between rows) and <code>executeRow</code>'s GET loop (between pages) check it.
+Don't replace it with <code>useState</code> — the loop won't see updates because of closure capture.</p>
+
+<h3>ETA computation</h3>
+<p>In <code>runRows</code>, after each row: <code>avgMs = elapsed / completed</code>,
+<code>remainingMs = remaining × avgMs</code>. First-row estimate is unavoidably rough but converges fast.
+ETA is <em>only</em> shown for bulk runs (not GET fetches, not single runs).</p>
+
+<h3>Dead code to be aware of</h3>
+<ul>
+  <li><code>app/components/SettingsModal.tsx</code> — Gemini-era leftover.</li>
+  <li><code>@google/genai</code> in <code>package.json</code> — unused.</li>
+  <li><code>@anthropic-ai/sdk</code> — installed but bypassed in favour of the Rust command.</li>
+  <li><code>public/rl.svg</code> — corrupt (binary in an SVG file). Use <code>rli.svg</code>.</li>
+  <li><code>README.md</code> — stock create-next-app readme.</li>
+</ul>
+
+<!-- ============================================================ -->
+<!-- 13. COMMON DEV TASKS -->
+<!-- ============================================================ -->
+<h1 class="section" id="tasks">13. Common dev tasks</h1>
+
+<h3>Add a new Rocketlane endpoint to the picker</h3>
+<ol>
+  <li>Open <code>lib/rl-api-endpoints.ts</code>.</li>
+  <li>Add a <code>{ key, name, method }</code> entry under the right category in <code>RL_CATEGORIES</code>,
+    or add a whole new category.</li>
+  <li>Done — the picker, settings page, and badges pick it up automatically.</li>
+</ol>
+
+<h3>Allow a new external HTTP host</h3>
+<ol>
+  <li>Open <code>src-tauri/capabilities/default.json</code>.</li>
+  <li>Add the URL pattern under the <code>"http:allow-fetch"</code> permission's <code>allow</code> array.</li>
+  <li>Rebuild — capabilities are baked at build time.</li>
+</ol>
+
+<h3>Tweak how Claude generates curls</h3>
+<p>Edit the <code>SYSTEM</code> string in <code>lib/generate-curl.ts</code>. After changes, smoke-test
+against <em>Get all tasks</em> (most over-eager endpoint) and a typical POST like <em>Create a task</em>.</p>
+
+<h3>Tweak how Claude maps placeholders</h3>
+<p>Edit the <code>SYSTEM</code> in <code>lib/claude.ts</code> — but make sure the JSON it returns still
+matches <code>MappingSchema</code>. The Zod parse will throw with a useful error if not.</p>
+
+<h3>Add a new column to run history</h3>
+<ol>
+  <li>Add the field to <code>RunRecord</code> in <code>types/index.ts</code>.</li>
+  <li>Update the <code>CREATE TABLE</code> in <code>lib/db.ts → initDb()</code> (and write a migration if
+    the DB is already in production).</li>
+  <li>Update <code>saveRun()</code> to include the field.</li>
+  <li>Add a column in <code>HistoryView.tsx</code>'s table.</li>
+</ol>
+
+<h3>Add a new top-level view (e.g., "Stats")</h3>
+<ol>
+  <li>Create <code>app/components/StatsView.tsx</code>.</li>
+  <li>Add <code>'stats'</code> to the <code>activeView</code> union in <code>page.tsx</code>.</li>
+  <li>Add a button in the header nav array (<code>['operation', 'history', 'settings'] as const</code>).</li>
+  <li>Add a render branch in the main flex container.</li>
+</ol>
+
+<h3>Change the splash duration / animation</h3>
+<p><code>app/components/SplashScreen.tsx</code> — adjust the two <code>setTimeout</code>s. Animation
+keyframes live in <code>app/globals.css</code>.</p>
+
+<h3>Change the model</h3>
+<p><code>lib/claude.ts</code> and <code>lib/generate-curl.ts</code> both have a <code>const MODEL = ...</code>
+at the top. Update both. (Or refactor into a shared constant — currently duplicated.)</p>
+
+<!-- ============================================================ -->
+<!-- 14. BUILD & RUN -->
+<!-- ============================================================ -->
+<h1 class="section" id="runbuild">14. Build & run</h1>
+
+<h3>First-time setup</h3>
+<pre><code>cd "/Users/vikasgautam/Desktop/script writer/script-gen"
+npm install
+# Rust toolchain is required for Tauri. Install via rustup if needed:
+#   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh</code></pre>
+
+<h3>Dev (live-reload desktop window)</h3>
+<pre><code>npx tauri dev
+# or, equivalently:
+# npm run dev      (just the Next.js side, in a normal browser at :3000)</code></pre>
+<p>The Next.js dev server runs at <code>:3000</code>; Tauri opens a window pointing at it. Hot-reload
+works for the React code; Rust changes require restarting <code>tauri dev</code>.</p>
+
+<h3>Production build</h3>
+<pre><code>npx tauri build</code></pre>
+<p>Produces a <code>.dmg</code> in <code>src-tauri/target/release/bundle/dmg/</code>. The <code>.app</code>
+is also there if you want to run it directly.</p>
+
+<h3>Lint</h3>
+<pre><code>npm run lint</code></pre>
+
+<h3>Smoke test after any change</h3>
+<ol>
+  <li>Open the app, dismiss splash.</li>
+  <li>Settings → paste Claude key, paste docs for at least one endpoint.</li>
+  <li>Operation → paste RL key in session, type a description, click Generate.</li>
+  <li>Click Run with Dry Run on — confirm preview looks right.</li>
+  <li>For a GET: turn off Dry Run, run, confirm pagination + ETA + abort all behave.</li>
+  <li>For a POST/PUT/DELETE: upload a 3-row CSV, Preview Mapping, confirm.</li>
+  <li>History tab → run shows up. Retry-failed if anything errored.</li>
+</ol>
+
+<hr>
+
+<p class="small">End of guide. If you find something missing or wrong, fix it here — this file is the
+spec for the project.</p>
+
+</body>
+</html>
