@@ -16,6 +16,7 @@ import HistoryView from './components/HistoryView'
 import SettingsView from './components/SettingsView'
 import EndpointPicker from './components/EndpointPicker'
 import SplashScreen from './components/SplashScreen'
+import DataPreviewModal from './components/DataPreviewModal'
 
 function parsePlaceholders(curl: string): string[] {
   return [...new Set([...curl.matchAll(/\{\{(\w+)\}\}/g)].map((m) => m[1]))]
@@ -113,6 +114,7 @@ export default function Home() {
   const [csvRows, setCsvRows] = useState<Record<string, string>[]>([])
   const [csvColumns, setCsvColumns] = useState<string[]>([])
   const [csvError, setCsvError] = useState<string | null>(null)
+  const [csvParsing, setCsvParsing] = useState(false)
 
   // API docs (from Settings)
   const [apiDocs, setApiDocs] = useState<Record<string, string>>({})
@@ -155,6 +157,7 @@ export default function Home() {
   const [runs, setRuns] = useState<RunRecord[]>([])
   const [loadedCurlName, setLoadedCurlName] = useState('')
   const [showSaveCurlModal, setShowSaveCurlModal] = useState(false)
+  const [showDataPreview, setShowDataPreview] = useState(false)
 
   // Init DB and load data on mount
   useEffect(() => {
@@ -239,27 +242,68 @@ export default function Home() {
     (isGetMethod || mode === 'single' || csvRows.length > 0) &&
     (isGetMethod || template !== null)
 
-  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
+    e.target.value = ''
     if (!file) return
     setCsvFile(file)
     setCsvError(null)
     setCsvRows([])
     setCsvColumns([])
-    Papa.parse<Record<string, string>>(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: (result) => {
-        if (result.errors.length > 0 && result.data.length === 0) {
-          setCsvError(result.errors[0].message)
+
+    const ext = file.name.toLowerCase().split('.').pop()
+    const isExcel = ext === 'xlsx' || ext === 'xls'
+
+    if (isExcel) {
+      setCsvParsing(true)
+      console.log('[xlsx] starting parse for', file.name, 'size:', file.size)
+      try {
+        // Dynamic import — resolves at runtime, avoids bundler-time module shape issues
+        const XLSX = await import('xlsx')
+        console.log('[xlsx] library loaded, has read?', typeof XLSX.read)
+        if (typeof XLSX.read !== 'function') {
+          setCsvError('xlsx library loaded but XLSX.read is not a function — module shape unexpected')
           return
         }
-        setCsvRows(result.data)
-        setCsvColumns(result.meta.fields ?? [])
-      },
-      error: (err) => setCsvError(err.message),
-    })
-    e.target.value = ''
+        const buf = await file.arrayBuffer()
+        const wb = XLSX.read(new Uint8Array(buf), { type: 'array' })
+        console.log('[xlsx] workbook parsed, sheets:', wb.SheetNames)
+        const sheet = wb.Sheets[wb.SheetNames[0]]
+        if (!sheet) { setCsvError('No sheets found in workbook'); return }
+        const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '', blankrows: false })
+        console.log('[xlsx] rows in matrix:', matrix.length)
+        if (matrix.length === 0) { setCsvError('Sheet is empty'); return }
+        const headers = (matrix[0] as unknown[]).map((h) => String(h ?? '').trim()).filter(Boolean)
+        if (headers.length === 0) { setCsvError('No column headers found in first row'); return }
+        const rows = (matrix.slice(1) as unknown[][]).map((row) => {
+          const obj: Record<string, string> = {}
+          headers.forEach((col, i) => { obj[col] = String(row[i] ?? '') })
+          return obj
+        })
+        console.log('[xlsx] parsed:', headers.length, 'columns,', rows.length, 'rows')
+        setCsvColumns(headers)
+        setCsvRows(rows)
+      } catch (err) {
+        console.error('[xlsx parse] failed:', err)
+        setCsvError(`Failed to parse ${ext?.toUpperCase()}: ${err instanceof Error ? err.message : String(err)}`)
+      } finally {
+        setCsvParsing(false)
+      }
+    } else {
+      Papa.parse<Record<string, string>>(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (result) => {
+          if (result.errors.length > 0 && result.data.length === 0) {
+            setCsvError(result.errors[0].message)
+            return
+          }
+          setCsvRows(result.data)
+          setCsvColumns(result.meta.fields ?? [])
+        },
+        error: (err) => setCsvError(err.message),
+      })
+    }
   }
 
   function handleSaveSettings(newClaudeKey: string) {
@@ -445,6 +489,15 @@ export default function Home() {
     }
   }
 
+  // Test the script on just the first CSV row — same dry/real toggle, same delay-irrelevant path
+  async function handleTestFirstRow() {
+    if (mode !== 'bulk' || csvRows.length === 0) return
+    const tpl = template ?? parseCurlDirect(curlCmd)
+    if (!tpl) return
+    setShowPreview(false)
+    await runRows([{ originalRow: 1, data: csvRows[0] }], tpl)
+  }
+
   // Retry only errored rows from the last run — reuses existing template, no Claude call
   async function handleRetryFailed() {
     if (!template) return
@@ -622,9 +675,14 @@ export default function Home() {
                     <button
                       onClick={() => { setShowGenerate((v) => !v); setGenerateError(null) }}
                       disabled={isRunning}
-                      className="text-[11px] text-zinc-500 hover:text-zinc-300 transition-colors disabled:opacity-40"
+                      className={`text-xs px-2.5 py-1 rounded-md border flex items-center gap-1.5 transition-all disabled:opacity-40 ${
+                        showGenerate
+                          ? 'bg-violet-500/10 border-violet-500/30 text-violet-300'
+                          : 'bg-white/[0.04] border-white/[0.08] text-zinc-300 hover:bg-violet-500/[0.08] hover:border-violet-500/25 hover:text-violet-200'
+                      }`}
                     >
-                      {showGenerate ? '↑ hide' : '✦ generate'}
+                      <span className="text-[11px]">{showGenerate ? '↑' : '✦'}</span>
+                      <span>{showGenerate ? 'Hide' : 'Generate with AI'}</span>
                     </button>
                   </div>
 
@@ -696,9 +754,10 @@ export default function Home() {
                     {curlCmd.trim() && (
                       <button
                         onClick={() => { setCurlCmd(''); setPickedMethod(null); setTemplate(null) }}
-                        className="text-[11px] text-zinc-600 hover:text-zinc-400 transition-colors shrink-0"
+                        className="text-[11px] px-2 py-0.5 rounded-md border border-white/[0.06] text-zinc-500 hover:border-rose-500/25 hover:text-rose-300 hover:bg-rose-500/[0.04] transition-all shrink-0 flex items-center gap-1"
                       >
-                        clear
+                        <span className="text-[10px]">×</span>
+                        <span>Clear</span>
                       </button>
                     )}
                   </div>
@@ -781,14 +840,14 @@ export default function Home() {
                   </section>
                 )}
 
-                {/* Bulk mode: CSV upload */}
+                {/* Bulk mode: CSV / XLSX upload */}
                 {!isGetMethod && mode === 'bulk' && (
                   <section>
-                    <p className="label">CSV File</p>
+                    <p className="label">Data File <span className="text-zinc-700 normal-case tracking-normal font-normal">— CSV or XLSX</span></p>
                     <input
                       ref={fileInputRef}
                       type="file"
-                      accept=".csv"
+                      accept=".csv,.xlsx,.xls"
                       onChange={handleFileChange}
                       className="hidden"
                     />
@@ -800,15 +859,31 @@ export default function Home() {
                       {csvFile ? (
                         <span className="text-zinc-200 truncate block">{csvFile.name}</span>
                       ) : (
-                        <span className="text-zinc-500">↑ Choose CSV file…</span>
+                        <span className="text-zinc-500">↑ Choose CSV or XLSX file…</span>
                       )}
                     </button>
-                    {csvError && <p className="mt-1.5 text-xs text-red-400">{csvError}</p>}
+                    {csvParsing && (
+                      <p className="mt-1.5 text-xs text-violet-300 flex items-center gap-1.5">
+                        <span className="animate-spin-sm w-3 h-3 rounded-full border-2 border-violet-600 border-t-violet-200 inline-block" />
+                        Parsing file…
+                      </p>
+                    )}
+                    {csvError && <p className="mt-1.5 text-xs text-red-400 break-words">{csvError}</p>}
                     {csvColumns.length > 0 && (
                       <div className="mt-3 space-y-3">
-                        <p className="text-[11px] text-zinc-600">
-                          {csvRows.length} rows · {csvColumns.length} columns
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] text-zinc-600">
+                            {csvRows.length.toLocaleString()} rows · {csvColumns.length} columns
+                          </p>
+                          <button
+                            onClick={() => setShowDataPreview(true)}
+                            className="text-[11px] px-2 py-0.5 rounded-md border border-white/[0.08] text-zinc-400 hover:border-violet-500/30 hover:text-violet-200 hover:bg-violet-500/[0.06] transition-all flex items-center gap-1"
+                            title="Open full table view"
+                          >
+                            <span className="text-[10px]">⤢</span>
+                            <span>Expand</span>
+                          </button>
+                        </div>
                         {/* Inline CSV preview table */}
                         <div className="overflow-x-auto rounded-lg border border-white/[0.06]">
                           <table className="w-full text-[10px] font-mono border-collapse">
@@ -933,6 +1008,19 @@ export default function Home() {
                   )}
                 </div>
 
+                {/* Test on row 1 — proper secondary button, only when a bulk run is feasible */}
+                {!isGetMethod && mode === 'bulk' && csvRows.length > 0 && !isRunning && rlKey.trim() && curlCmd.trim() && (
+                  <button
+                    onClick={handleTestFirstRow}
+                    className="w-full py-2 text-xs rounded-lg border border-dashed border-white/[0.14] text-zinc-300 hover:border-violet-500/35 hover:text-violet-200 hover:bg-violet-500/[0.05] transition-all flex items-center justify-center gap-2 group"
+                    title="Sanity-check the script on a single row before firing the full batch"
+                  >
+                    <span className="text-violet-400/80 group-hover:text-violet-300">⚡</span>
+                    <span>Test on row 1 only</span>
+                    {dryRun && <span className="text-[10px] text-violet-400/70 ml-1">(dry)</span>}
+                  </button>
+                )}
+
               </div>
             </div>
 
@@ -983,6 +1071,14 @@ export default function Home() {
           defaultName={loadedCurlName}
           onSave={handleSaveCurl}
           onClose={() => setShowSaveCurlModal(false)}
+        />
+      )}
+      {showDataPreview && csvFile && (
+        <DataPreviewModal
+          fileName={csvFile.name}
+          columns={csvColumns}
+          rows={csvRows}
+          onClose={() => setShowDataPreview(false)}
         />
       )}
     </div>
