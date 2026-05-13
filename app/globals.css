@@ -55,13 +55,25 @@ body {
   to   { opacity: 1; transform: translateY(0)    scale(1)    }
 }
 
+@keyframes backdrop-out {
+  from { opacity: 1 }
+  to   { opacity: 0 }
+}
+
+@keyframes modal-out {
+  from { opacity: 1; transform: translateY(0)   scale(1)    }
+  to   { opacity: 0; transform: translateY(8px) scale(0.94) }
+}
+
 @keyframes spin {
   to { transform: rotate(360deg) }
 }
 
-.animate-backdrop { animation: backdrop-in 0.18s ease-out both }
-.animate-modal    { animation: modal-in    0.22s cubic-bezier(0.16, 1, 0.3, 1) both }
-.animate-spin-sm  { animation: spin 0.7s linear infinite }
+.animate-backdrop     { animation: backdrop-in  0.18s ease-out both }
+.animate-modal        { animation: modal-in     0.22s cubic-bezier(0.16, 1, 0.3, 1) both }
+.animate-backdrop-out { animation: backdrop-out 0.20s ease-in both }
+.animate-modal-out    { animation: modal-out    0.22s cubic-bezier(0.4, 0, 0.2, 1) both }
+.animate-spin-sm      { animation: spin 0.7s linear infinite }
 
 /* Premium scrollbars */
 ::-webkit-scrollbar {
